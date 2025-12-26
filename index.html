@@ -8,8 +8,14 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <script>
-    // Polyfill for process.env to prevent crashes in browser-only environments
-    window.process = window.process || { env: {} };
+    // Robust polyfill for process.env to prevent crashes in browser environments
+    window.process = {
+      env: {
+        NODE_ENV: 'production',
+        API_KEY: '' // Will be injected or handled by the environment
+      },
+      nextTick: function(fn) { setTimeout(fn, 0); }
+    };
   </script>
   <style>
     body {
@@ -55,5 +61,7 @@
 </head>
 <body>
   <div id="root"></div>
+  <!-- Entry point for the application -->
+  <script type="module" src="./index.tsx"></script>
 </body>
 </html>
