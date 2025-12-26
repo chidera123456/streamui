@@ -28,7 +28,9 @@ const Profile: React.FC = () => {
     navigate('/');
   };
 
-  const username = user.user_metadata?.username || user.email?.split('@')[0] || 'User';
+  const username = String(user.user_metadata?.username || user.email?.split('@')[0] || 'User');
+  const initial = username.length > 0 ? username.charAt(0) : 'U';
+  
   const joinedDate = user.created_at 
     ? new Date(user.created_at).toLocaleDateString('en-US', {
         month: 'long',
@@ -44,7 +46,7 @@ const Profile: React.FC = () => {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
           <div className="absolute -bottom-12 left-8 p-1 bg-[#141414] rounded-full border-4 border-[#141414] shadow-xl">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-tr from-red-600 to-purple-600 flex items-center justify-center text-4xl md:text-5xl font-black uppercase italic tracking-tighter">
-              {username.charAt(0)}
+              {initial}
             </div>
           </div>
         </div>

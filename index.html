@@ -7,6 +7,10 @@
   <title>StreamUI - AI Movie Search</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    // Polyfill for process.env to prevent crashes in browser-only environments
+    window.process = window.process || { env: {} };
+  </script>
   <style>
     body {
       font-family: 'Inter', sans-serif;

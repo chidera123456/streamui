@@ -9,8 +9,10 @@ const Navbar: React.FC = () => {
   
   const isActive = (path: string) => location.pathname === path;
 
-  // Safely extract username from metadata or email
-  const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
+  // Extremely safe username extraction
+  const rawUsername = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
+  const username = String(rawUsername);
+  const initial = username.length > 0 ? username.charAt(0) : 'U';
 
   return (
     <nav className="fixed top-0 left-0 right-0 h-16 bg-black/90 backdrop-blur-md border-b border-white/10 z-50 px-4 md:px-8 flex items-center justify-between">
@@ -58,7 +60,7 @@ const Navbar: React.FC = () => {
             className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition-all"
           >
             <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-red-600 to-purple-600 flex items-center justify-center text-[10px] font-black uppercase">
-              {username.charAt(0)}
+              {initial}
             </div>
             <span className="hidden sm:block text-xs font-bold truncate max-w-[80px]">{username}</span>
           </Link>
