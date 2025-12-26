@@ -1,0 +1,5 @@
+{
+  "name": "StreamUI - AI Powered Movie & Series Discovery",
+  "description": "A modern, responsive movie and TV series search engine featuring AI-powered recommendations and discovery using the Gemini API and TMDB.",
+  "requestFramePermissions": []
+}
