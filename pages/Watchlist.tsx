@@ -31,7 +31,7 @@ const Watchlist: React.FC = () => {
       </div>
 
       {watchlist.length > 0 ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
           {watchlist.map((item) => (
             <MediaCard key={`${item.media_type}-${item.id}`} media={item} />
           ))}

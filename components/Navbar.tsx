@@ -9,67 +9,89 @@ const Navbar: React.FC = () => {
   
   const isActive = (path: string) => location.pathname === path;
 
-  // Extremely safe username extraction
   const rawUsername = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
   const username = String(rawUsername);
   const initial = username.length > 0 ? username.charAt(0) : 'U';
 
+  const navLinks = [
+    { 
+      path: '/', 
+      label: 'Home', 
+      activeClass: 'text-[#1ce783]',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      )
+    },
+    { 
+      path: '/search', 
+      label: 'Discovery', 
+      activeClass: 'text-[#1ce783]',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      )
+    },
+    { 
+      path: '/anime', 
+      label: 'Anime', 
+      activeClass: 'text-cyan-400',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+      )
+    },
+    { 
+      path: '/watchlist', 
+      label: 'My List', 
+      activeClass: 'text-[#1ce783]',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      )
+    }
+  ];
+
   return (
-    <nav className="fixed top-0 left-0 right-0 h-16 bg-black/90 backdrop-blur-md border-b border-white/10 z-50 px-4 md:px-8 flex items-center justify-between">
-      <Link to="/" className="text-red-600 font-extrabold text-2xl tracking-tighter hover:scale-105 transition-transform">
-        STREAM<span className="text-white">UI</span>
+    <nav className="fixed top-0 left-0 right-0 h-16 bg-[#040404]/90 backdrop-blur-xl border-b border-white/5 z-50 px-4 md:px-8 flex items-center justify-between">
+      <Link to="/" className="flex items-center gap-2 group shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center rotate-3 group-hover:rotate-12 transition-transform duration-500 shadow-lg shadow-[#1ce783]/20">
+          <span className="text-black font-black text-lg italic">Z</span>
+        </div>
+        <span className="text-white font-black text-xl md:text-2xl tracking-tighter uppercase italic">
+          ZEN<span className="text-[#1ce783]">STREAM</span>
+        </span>
       </Link>
       
-      <div className="flex items-center gap-4 md:gap-6 overflow-x-auto hide-scrollbar flex-1 justify-center px-4">
-        <Link 
-          to="/" 
-          className={`text-sm font-semibold whitespace-nowrap transition-colors ${isActive('/') ? 'text-red-500' : 'text-gray-400 hover:text-white'}`}
-        >
-          Home
-        </Link>
-        <Link 
-          to="/search" 
-          className={`text-sm font-semibold whitespace-nowrap transition-colors ${isActive('/search') ? 'text-red-500' : 'text-gray-400 hover:text-white'}`}
-        >
-          Discovery
-        </Link>
-        <Link 
-          to="/anime" 
-          className={`text-sm font-semibold whitespace-nowrap transition-colors ${isActive('/anime') ? 'text-indigo-500 font-black' : 'text-gray-400 hover:text-indigo-400'}`}
-        >
-          Anime
-        </Link>
-        <Link 
-          to="/watchlist" 
-          className={`text-sm font-semibold whitespace-nowrap transition-colors ${isActive('/watchlist') ? 'text-red-500' : 'text-gray-400 hover:text-white'}`}
-        >
-          My List
-        </Link>
-        <Link 
-          to="/ai-suggest" 
-          className={`hidden md:block text-sm font-semibold whitespace-nowrap px-3 py-1 bg-white/10 rounded-full transition-colors ${isActive('/ai-suggest') ? 'text-purple-500 border border-purple-500 font-black' : 'text-gray-400 hover:text-white hover:bg-white/20'}`}
-        >
-          AI Magic ✨
-        </Link>
+      <div className="flex items-center gap-4 md:gap-8 flex-1 justify-center px-2">
+        {navLinks.map((link) => (
+          <Link 
+            key={link.path}
+            to={link.path} 
+            className={`transition-all duration-300 flex items-center justify-center ${isActive(link.path) ? link.activeClass : 'text-gray-400 hover:text-white'}`}
+          >
+            <span className="hidden md:block text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+              {link.label}
+            </span>
+            <span className="block md:hidden transform active:scale-90">
+              {link.icon}
+            </span>
+          </Link>
+        ))}
       </div>
 
-      <div className="flex items-center">
+      <div className="flex items-center shrink-0">
         {user ? (
           <Link 
             to="/profile" 
-            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition-all"
+            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 md:px-3 md:py-1.5 rounded-full transition-all"
           >
-            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-red-600 to-purple-600 flex items-center justify-center text-[10px] font-black uppercase">
+            <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-[10px] md:text-xs font-black uppercase text-black">
               {initial}
             </div>
-            <span className="hidden sm:block text-xs font-bold truncate max-w-[80px]">{username}</span>
           </Link>
         ) : (
           <button 
             onClick={openAuthModal}
-            className="bg-red-600 hover:bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase italic tracking-tighter transition-all active:scale-95"
+            className="bg-white text-black hover:bg-[#1ce783] px-4 md:px-6 py-1.5 md:py-2 rounded-sm text-[10px] md:text-xs font-black uppercase tracking-widest transition-all active:scale-95"
           >
-            Sign In
+            Log In
           </button>
         )}
       </div>

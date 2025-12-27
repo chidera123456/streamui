@@ -2,13 +2,34 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AISuggestion } from "../types";
 
-// Always use process.env.API_KEY directly for initialization
 const getAIClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+export const getCorrectedQuery = async (query: string): Promise<string | null> => {
+  const ai = getAIClient();
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `The user searched for: "${query}". 
+      If this is a misspelled movie/TV title or a description of a specific film, return only the correct official title.
+      If it's already correct or too vague to identify a single specific title, return the original query.
+      Output ONLY the title string, no explanation.`,
+      config: {
+        temperature: 0.1, // Low temperature for precision
+      }
+    });
+
+    const corrected = response.text?.trim() || null;
+    return (corrected && corrected.toLowerCase() !== query.toLowerCase()) ? corrected : null;
+  } catch (e) {
+    console.error("Failed to correct query with Gemini", e);
+    return null;
+  }
+};
 
 export const getAISuggestions = async (prompt: string): Promise<AISuggestion[]> => {
   const ai = getAIClient();
   
-  // Using gemini-3-pro-preview for more nuanced reasoning on user moods/queries
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
     contents: `Analyze the user's request for movies or TV series and provide 6 diverse, high-quality recommendations that fit the mood. 

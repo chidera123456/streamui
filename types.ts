@@ -19,10 +19,12 @@ export interface Movie {
   first_air_date?: string;
   media_type: 'movie' | 'tv';
   genres?: Array<{ id: number; name: string }>;
+  genre_ids?: number[];
   runtime?: number;
   popularity: number;
   number_of_seasons?: number;
   number_of_episodes?: number;
+  original_language?: string;
   external_ids?: {
     imdb_id?: string;
   };
@@ -34,6 +36,17 @@ export interface Movie {
       name: string;
     }>;
   };
+}
+
+export interface HistoryItem {
+  id: string;
+  user_id: string;
+  media_id: number;
+  media_type: 'movie' | 'tv';
+  media_data: Movie;
+  last_watched_at: string;
+  season?: number;
+  episode?: number;
 }
 
 export interface Season {
@@ -56,4 +69,15 @@ export interface Episode {
 export interface AISuggestion {
   title: string;
   reason: string;
+}
+
+export interface Comment {
+  id: string;
+  user_id: string;
+  username: string;
+  content: string;
+  created_at: string;
+  media_id: number;
+  media_type: string;
+  parent_id: string | null;
 }

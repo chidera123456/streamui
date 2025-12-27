@@ -4,26 +4,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StreamUI - AI Movie Search</title>
+  <title>ZenStream - Cinematic Discovery</title>
+  
+  <!-- Performance Preconnects -->
+  <link rel="preconnect" href="https://image.tmdb.org">
+  <link rel="preconnect" href="https://api.themoviedb.org">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <script>
-    // Robust polyfill for process.env to prevent crashes in browser environments
-    window.process = {
-      env: {
-        NODE_ENV: 'production',
-        API_KEY: '' // Will be injected or handled by the environment
-      },
-      nextTick: function(fn) { setTimeout(fn, 0); }
-    };
+    window.process = window.process || {};
+    window.process.env = window.process.env || {};
+    window.process.env.NODE_ENV = window.process.env.NODE_ENV || 'production';
+    window.process.nextTick = window.process.nextTick || function(fn) { setTimeout(fn, 0); };
   </script>
   <style>
     body {
       font-family: 'Inter', sans-serif;
-      background-color: #0a0a0a;
+      background-color: #040404;
       color: #ffffff;
       margin: 0;
       -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+      /* Smooth hardware accelerated scrolling */
+      scroll-behavior: smooth;
     }
     .hide-scrollbar::-webkit-scrollbar {
       display: none;
@@ -32,9 +38,6 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
-    .hero-gradient {
-      background: linear-gradient(to top, #0a0a0a 0%, rgba(10, 10, 10, 0.4) 50%, rgba(10, 10, 10, 0.8) 100%);
-    }
     .custom-scrollbar::-webkit-scrollbar {
       width: 4px;
     }
@@ -42,26 +45,53 @@
       background: rgba(255, 255, 255, 0.05);
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: rgba(220, 38, 38, 0.5);
+      background: rgba(28, 231, 131, 0.5); 
       border-radius: 10px;
     }
+
+    @keyframes zenIntro {
+      0% { transform: scale(0.9); opacity: 0; filter: blur(10px); }
+      60% { transform: scale(1); opacity: 1; filter: blur(0px); }
+      100% { transform: scale(1.05); opacity: 0; }
+    }
+    .animate-zen-intro {
+      animation: zenIntro 2.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+    }
+
+    @keyframes logoPulse {
+      0%, 100% { filter: drop-shadow(0 0 10px rgba(28, 231, 131, 0.3)); }
+      50% { filter: drop-shadow(0 0 25px rgba(28, 231, 131, 0.6)); }
+    }
+    .logo-pulse {
+      animation: logoPulse 3s infinite;
+    }
+    
+    .zen-gradient-text {
+      background: linear-gradient(to right, #1ce783, #00ed82, #60fe9d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    /* Optimize rendering performance */
+    img { content-visibility: auto; }
   </style>
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
+    "react": "https://esm.sh/react@19.2.3",
+    "react-dom": "https://esm.sh/react-dom@19.2.3",
+    "react-dom/client": "https://esm.sh/react-dom@19.2.3/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.34.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@7.11.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.48.1",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.48.1"
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
 </head>
 <body>
   <div id="root"></div>
-  <!-- Entry point for the application -->
   <script type="module" src="./index.tsx"></script>
 </body>
 </html>

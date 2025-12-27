@@ -24,13 +24,13 @@ export const useWatchlist = () => {
           .eq('user_id', user.id);
 
         if (error) {
-          console.error("Error fetching watchlist:", error);
+          console.error("Error fetching watchlist:", error.message || String(error));
         } else if (data && Array.isArray(data)) {
           const movies = data.map(item => item.media_data as Movie).filter(Boolean);
           setWatchlist(movies);
         }
-      } catch (err) {
-        console.error("Critical error fetching watchlist:", err);
+      } catch (err: any) {
+        console.error("Critical error fetching watchlist:", err?.message || String(err));
       } finally {
         setLoading(false);
       }
@@ -55,7 +55,9 @@ export const useWatchlist = () => {
           .eq('user_id', user.id)
           .eq('media_id', movie.id);
 
-        if (!error) {
+        if (error) {
+          console.error("Error removing from watchlist:", error.message || String(error));
+        } else {
           setWatchlist(prev => prev.filter(m => m.id !== movie.id));
         }
       } else {
@@ -68,14 +70,14 @@ export const useWatchlist = () => {
             media_data: movie
           });
 
-        if (!error) {
-          setWatchlist(prev => [...prev, movie]);
+        if (error) {
+          console.error("Error adding to watchlist:", error.message || String(error));
         } else {
-          console.error("Error adding to watchlist:", error);
+          setWatchlist(prev => [...prev, movie]);
         }
       }
-    } catch (err) {
-      console.error("Watchlist action failed:", err);
+    } catch (err: any) {
+      console.error("Watchlist action failed:", err?.message || String(err));
     }
   };
 
