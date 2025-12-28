@@ -2,7 +2,7 @@
   "name": "ZenStream - Cinematic Discovery",
   "short_name": "ZenStream",
   "description": "Explore millions of movies and series with ZenStream. Pure cinematic discovery.",
-  "start_url": "./",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#040404",
   "theme_color": "#1ce783",
