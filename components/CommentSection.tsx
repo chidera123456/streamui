@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Comment } from '../types';
@@ -11,6 +11,8 @@ interface Props {
   currentEpisode?: number;
 }
 
+type SortOption = 'newest' | 'oldest' | 'top';
+
 const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "this title", currentEpisode }) => {
   const { user, openAuthModal } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -21,64 +23,79 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  
+  const [userLikes, setUserLikes] = useState<Set<string>>(new Set<string>());
+  const [userDislikes, setUserDislikes] = useState<Set<string>>(new Set<string>());
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const userId = user?.id || 'guest';
+    const storedLikes = localStorage.getItem(`zen_likes_${userId}`);
+    const storedDislikes = localStorage.getItem(`zen_dislikes_${userId}`);
+    
+    if (storedLikes) {
+      try { setUserLikes(new Set<string>(JSON.parse(storedLikes))); } catch (e) {}
+    }
+    if (storedDislikes) {
+      try { setUserDislikes(new Set<string>(JSON.parse(storedDislikes))); } catch (e) {}
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
+        setShowSortDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const saveInteractionsToLocal = (newLikes: Set<string>, newDislikes: Set<string>) => {
+    const userId = user?.id || 'guest';
+    localStorage.setItem(`zen_likes_${userId}`, JSON.stringify(Array.from(newLikes)));
+    localStorage.setItem(`zen_dislikes_${userId}`, JSON.stringify(Array.from(newDislikes)));
+  };
 
   const fetchProfiles = async (userIds: string[]) => {
     if (userIds.length === 0) return;
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, avatar_url')
-        .in('id', userIds);
-      
-      if (!error && data) {
-        const profileMap = data.reduce((acc: any, p: any) => ({
-          ...acc,
-          [p.id]: p.avatar_url
-        }), {});
+      const { data } = await supabase.from('profiles').select('id, avatar_url').in('id', userIds);
+      if (data) {
+        const profileMap = data.reduce((acc: any, p: any) => ({ ...acc, [p.id]: p.avatar_url }), {});
         setProfiles(prev => ({ ...prev, ...profileMap }));
       }
-    } catch (err) {
-      console.debug('Profiles inaccessible:', err);
-    }
+    } catch (err) {}
   };
 
-  const fetchComments = useCallback(async () => {
-    setLoading(true);
+  const fetchComments = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
-      const { data, error: fetchError } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('media_id', mediaId)
-        .eq('media_type', mediaType)
-        .order('created_at', { ascending: false });
+      let query = supabase.from('comments').select('*').eq('media_id', mediaId).eq('media_type', mediaType);
+      if (sortBy === 'newest') query = query.order('created_at', { ascending: false });
+      else if (sortBy === 'oldest') query = query.order('created_at', { ascending: true });
+      else if (sortBy === 'top') query = query.order('likes', { ascending: false });
 
+      const { data, error: fetchError } = await query;
       if (fetchError) throw fetchError;
       
       const commentsData: Comment[] = (data as Comment[]) || [];
       setComments(commentsData);
-      
-      const userIds: string[] = Array.from(new Set(commentsData.map(c => c.user_id)));
-      fetchProfiles(userIds);
+      fetchProfiles(Array.from(new Set(commentsData.map(c => c.user_id))));
     } catch (err) {
       setError("Failed to sync discussion.");
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
-  }, [mediaId, mediaType]);
+  }, [mediaId, mediaType, sortBy]);
 
   useEffect(() => {
-    fetchComments();
-    const channel = supabase
-      .channel(`discussion_${mediaId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `media_id=eq.${mediaId}` }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const newC = payload.new as Comment;
-          setComments(prev => [newC, ...prev]);
-        } else if (payload.eventType === 'DELETE') {
-          setComments(prev => prev.filter(c => c.id !== payload.old.id));
-        }
-      })
+    fetchComments(true);
+    const channel = supabase.channel(`discussion_${mediaId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `media_id=eq.${mediaId}` }, () => fetchComments())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [mediaId, fetchComments]);
@@ -92,11 +109,11 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
     const username = user.user_metadata?.username || user.email?.split('@')[0] || 'User';
 
     try {
-      const { data, error: insertError } = await supabase
-        .from('comments')
-        .insert([{ user_id: user.id, media_id: mediaId, media_type: mediaType, content: content, username: username, parent_id: parentId }])
-        .select();
-
+      const { error: insertError } = await supabase.from('comments').insert([{ 
+        user_id: user.id, media_id: mediaId, media_type: mediaType, 
+        content: content, username: username, parent_id: parentId,
+        likes: 0, dislikes: 0
+      }]);
       if (insertError) throw insertError;
       if (!parentId) setNewComment('');
       else { setReplyToId(null); setReplyText(''); }
@@ -107,38 +124,70 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
     }
   };
 
+  const handleInteraction = async (commentId: string, type: 'like' | 'dislike') => {
+    if (!user) { openAuthModal(); return; }
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+
+    let nextLikes = comment.likes || 0;
+    let nextDislikes = comment.dislikes || 0;
+    const isLiked = userLikes.has(commentId);
+    const isDisliked = userDislikes.has(commentId);
+    const nextLikesSet = new Set<string>(userLikes);
+    const nextDislikesSet = new Set<string>(userDislikes);
+
+    if (type === 'like') {
+      if (isLiked) { nextLikes = Math.max(0, nextLikes - 1); nextLikesSet.delete(commentId); }
+      else { 
+        nextLikes += 1; nextLikesSet.add(commentId);
+        if (isDisliked) { nextDislikes = Math.max(0, nextDislikes - 1); nextDislikesSet.delete(commentId); }
+      }
+    } else {
+      if (isDisliked) { nextDislikes = Math.max(0, nextDislikes - 1); nextDislikesSet.delete(commentId); }
+      else { 
+        nextDislikes += 1; nextDislikesSet.add(commentId);
+        if (isLiked) { nextLikes = Math.max(0, nextLikes - 1); nextLikesSet.delete(commentId); }
+      }
+    }
+
+    setComments(prev => prev.map(c => c.id === commentId ? { ...c, likes: nextLikes, dislikes: nextDislikes } : c));
+    setUserLikes(nextLikesSet);
+    setUserDislikes(nextDislikesSet);
+    saveInteractionsToLocal(nextLikesSet, nextDislikesSet);
+
+    try {
+      await supabase.from('comments').update({ likes: nextLikes, dislikes: nextDislikes }).eq('id', commentId);
+    } catch (err) { fetchComments(); }
+  };
+
   const getTimeAgo = (dateStr: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / 1000);
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " years ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " months ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " hours ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutes ago";
-    return Math.floor(seconds) + " seconds ago";
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   };
 
   const renderComment = (comment: Comment, isReply: boolean = false) => {
-    const replies = comments.filter(c => c.parent_id === comment.id).sort((a, b) => 
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
+    const replies = comments.filter(c => c.parent_id === comment.id);
+    const isLiked = userLikes.has(comment.id);
+    const isDisliked = userDislikes.has(comment.id);
     const avatarUrl = profiles[comment.user_id];
-    // Mocking rank badges for aesthetic accuracy to the screenshot
-    const hasBadge = comment.username.length % 2 === 0;
-    const badgeName = comment.username.length % 3 === 0 ? "STARFISH" : "CRAB";
+
+    // Mock badges for the aesthetic
+    const isGoldUser = comment.likes && comment.likes > 5;
 
     return (
-      <div key={comment.id} className={`flex gap-4 ${isReply ? 'ml-12 mt-6' : 'mt-8'} animate-comment-in`}>
+      <div key={comment.id} className={`flex gap-2.5 md:gap-3 ${isReply ? 'ml-8 md:ml-12 mt-3 md:mt-4' : 'mt-5 md:mt-6'}`}>
         <div className="shrink-0">
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden bg-gray-800 border border-white/5">
+          <div className="w-9 h-9 md:w-11 md:h-11 rounded-full overflow-hidden bg-[#1a1c22]">
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400 bg-white/5 uppercase">
+              <div className="w-full h-full flex items-center justify-center text-[10px] md:text-xs text-gray-500 bg-[#23252b]">
                 {comment.username.charAt(0)}
               </div>
             )}
@@ -146,57 +195,72 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {hasBadge && (
-              <div className="bg-[#f0ad4e]/10 border border-[#f0ad4e]/30 px-1 py-0.5 rounded flex items-center gap-1">
-                <svg className="w-2 h-2 text-[#f0ad4e]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                <span className="text-[9px] font-black text-[#f0ad4e] uppercase leading-none">{badgeName}</span>
-              </div>
+          <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 md:mb-1">
+            <span className={`text-[12px] md:text-[13px] font-bold ${isGoldUser ? 'text-[#ffdd95]' : 'text-[#888]'}`}>
+              {comment.username}
+            </span>
+            {isGoldUser && (
+              <span className="text-[8px] md:text-[9px] bg-[#332a18] text-[#ffdd95] px-1 rounded-[2px] font-bold uppercase tracking-tighter">CRAB</span>
             )}
-            <span className={`text-[13px] font-bold ${hasBadge ? 'text-[#f0ad4e]' : 'text-gray-200'}`}>{comment.username}</span>
-            <span className="text-[11px] text-gray-500 font-medium ml-1">{getTimeAgo(comment.created_at)}</span>
+            <span className="text-[10px] md:text-[11px] text-gray-600 font-medium whitespace-nowrap">
+              {getTimeAgo(comment.created_at)}
+            </span>
           </div>
 
-          <p className="mt-1.5 text-gray-300 text-[14px] leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+          <p className="text-[#ccc] text-[13px] md:text-[14px] leading-snug mb-2 font-normal">
+            {comment.content}
+          </p>
 
-          <div className="mt-3 flex items-center gap-4 text-gray-500">
+          <div className="flex items-center gap-3 md:gap-4 text-gray-500 text-[11px] md:text-[12px] font-medium">
             <button 
               onClick={() => setReplyToId(replyToId === comment.id ? null : comment.id)}
-              className="flex items-center gap-1.5 text-[11px] font-bold uppercase hover:text-white transition-colors"
+              className="flex items-center gap-1 hover:text-white transition-colors"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+              <svg className="w-3 md:w-3.5 h-3 md:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
               Reply
             </button>
-            <button className="flex items-center gap-1 text-[11px] font-bold hover:text-[#1ce783] transition-colors">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
-              {comment.username.length % 5}
+
+            <button 
+              onClick={() => handleInteraction(comment.id, 'like')}
+              className={`flex items-center gap-0.5 md:gap-1 hover:text-white transition-colors ${isLiked ? 'text-white' : ''}`}
+            >
+              <svg className="w-3 md:w-3.5 h-3 md:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+              </svg>
+              {comment.likes || ''}
             </button>
-            <button className="flex items-center gap-1 text-[11px] font-bold hover:text-red-500 transition-colors">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ transform: 'rotate(180deg)' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
-              0
+
+            <button 
+              onClick={() => handleInteraction(comment.id, 'dislike')}
+              className={`flex items-center gap-0.5 md:gap-1 hover:text-white transition-colors ${isDisliked ? 'text-white' : ''}`}
+            >
+              <svg className="w-3 md:w-3.5 h-3 md:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.737 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+              </svg>
+              {comment.dislikes || ''}
             </button>
-            <button className="flex items-center gap-1 text-[11px] font-bold hover:text-white transition-colors">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" /></svg>
+
+            <button className="flex items-center gap-0.5 hover:text-white transition-colors">
+              <svg className="w-3 md:w-3.5 h-3 md:h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 10a2 2 0 100 4 2 2 0 000-4zM18 10a2 2 0 100 4 2 2 0 000-4zM6 10a2 2 0 100 4 2 2 0 000-4z" />
+              </svg>
               More
             </button>
           </div>
 
           {replyToId === comment.id && (
-            <form onSubmit={(e) => handleSubmit(e, comment.id)} className="mt-4 animate-in slide-in-from-top-2 duration-300">
-              <div className="relative">
-                <textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Leave a comment"
-                  className="w-full bg-[#1a1a24] border border-white/5 rounded px-4 py-3 text-sm outline-none focus:border-[#1ce783]/50 min-h-[80px] resize-none pr-10"
-                />
-                <button type="button" className="absolute right-3 top-3 text-gray-500 hover:text-white">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </button>
-              </div>
+            <form onSubmit={(e) => handleSubmit(e, comment.id)} className="mt-3">
+              <textarea
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="Write a reply..."
+                className="w-full bg-[#16181d] border border-white/5 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#555] min-h-[70px] text-white"
+              />
               <div className="flex justify-end gap-2 mt-2">
-                 <button type="button" onClick={() => setReplyToId(null)} className="px-4 py-1.5 text-[11px] font-bold uppercase text-gray-500 hover:text-white">Cancel</button>
-                 <button type="submit" disabled={submitting || !replyText.trim()} className="bg-[#1ce783] text-black px-6 py-1.5 rounded text-[11px] font-black uppercase disabled:opacity-30">Post</button>
+                <button type="button" onClick={() => setReplyToId(null)} className="px-3 py-1 text-[11px] font-bold text-gray-500 uppercase">Cancel</button>
+                <button type="submit" className="bg-[#555] text-white px-3 py-1 rounded-sm text-[11px] font-bold uppercase">Post</button>
               </div>
             </form>
           )}
@@ -208,81 +272,67 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
   };
 
   return (
-    <div className="mt-12 max-w-5xl mx-auto px-4">
-      {/* Discussion Header */}
-      <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6">
-        <div className="flex items-center gap-6">
-          {currentEpisode && (
-            <button className="text-[16px] font-bold text-gray-400 hover:text-white flex items-center gap-1 group">
-              Episode {currentEpisode}
-              <svg className="w-4 h-4 mt-0.5 group-hover:translate-y-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
-            </button>
+    <div className="mt-8 md:mt-12 w-full max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-[15px] md:text-[20px] font-bold text-white flex items-center gap-2">
+          <svg className="w-4 md:w-5 h-4 md:h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+          {comments.length} Comments
+        </h2>
+
+        <div className="relative" ref={sortRef}>
+          <button onClick={() => setShowSortDropdown(!showSortDropdown)} className="text-[12px] md:text-[13px] text-gray-400 flex items-center gap-1 font-bold">
+            Sort by <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          {showSortDropdown && (
+            <div className="absolute right-0 top-full mt-1 bg-[#23252b] border border-white/5 rounded shadow-xl z-50 min-w-[110px]">
+              {(['newest', 'top'] as SortOption[]).map(opt => (
+                <button key={opt} onClick={() => { setSortBy(opt); setShowSortDropdown(false); }} className={`w-full px-3 py-2 text-left text-[11px] font-bold hover:bg-white/5 ${sortBy === opt ? 'text-white' : 'text-gray-400'}`}>
+                  {opt === 'newest' ? 'Newest' : 'Top Rated'}
+                </button>
+              ))}
+            </div>
           )}
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
-            <span className="text-[16px] font-bold text-white">{comments.length} Comments</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 text-gray-400 cursor-pointer hover:text-white">
-          <span className="text-[12px] font-bold uppercase tracking-tight">Sort by</span>
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
         </div>
       </div>
 
-      {/* Auth State & Input */}
-      {!user ? (
-        <div className="bg-[#1a1a24] rounded px-5 py-4 flex items-center gap-4 border border-white/5 mb-8">
-          <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
-            <svg className="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
+      <div className="mb-6 md:mb-8">
+        {!user ? (
+          <div className="bg-[#16181d] rounded-sm p-3.5 text-[12px] md:text-[13px] text-gray-500 font-medium">
+            You must be <button onClick={openAuthModal} className="text-[#ffdd95] hover:underline">login</button> to post a comment
           </div>
-          <p className="text-[14px] text-gray-400">
-            You must be <button onClick={openAuthModal} className="text-[#1ce783] hover:underline font-bold">login</button> to post a comment
-          </p>
-        </div>
-      ) : (
-        <div className="flex gap-4 mb-10">
-          <div className="shrink-0">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden bg-gray-800 border border-white/5">
-              <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400 bg-white/5 uppercase">
-                {user.user_metadata?.username?.charAt(0) || user.email?.charAt(0)}
-              </div>
-            </div>
-          </div>
-          <form onSubmit={(e) => handleSubmit(e)} className="flex-1">
-            <div className="relative">
-              <textarea
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Leave a comment"
-                disabled={submitting}
-                className="w-full bg-[#1a1a24] border border-white/5 rounded px-5 py-4 text-[14px] outline-none focus:border-[#1ce783]/50 min-h-[100px] resize-none pr-12 disabled:opacity-50"
-              />
-              <button type="button" className="absolute right-4 top-4 text-gray-500 hover:text-white">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              </button>
-            </div>
-            {newComment.trim() && (
-              <div className="flex justify-end mt-2">
-                <button type="submit" disabled={submitting} className="bg-[#1ce783] text-black px-10 py-2 rounded font-black uppercase text-[12px] tracking-widest hover:brightness-110 transition-all">
-                  Post
-                </button>
-              </div>
-            )}
-          </form>
-        </div>
-      )}
-
-      {/* Comment List */}
-      <div className="space-y-4">
-        {loading ? (
-          <div className="py-20 text-center"><div className="w-8 h-8 border-2 border-[#1ce783] border-t-transparent rounded-full animate-spin mx-auto" /></div>
-        ) : comments.filter(c => !c.parent_id).length > 0 ? (
-          comments.filter(c => !c.parent_id).map(c => renderComment(c))
         ) : (
-          <div className="py-20 text-center text-gray-600 font-bold uppercase text-[12px] tracking-widest border border-dashed border-white/5 rounded">
-            The discussion hasn't started yet.
-          </div>
+          <form onSubmit={(e) => handleSubmit(e)} className="flex gap-2.5 md:gap-3">
+             <div className="shrink-0">
+               <div className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-[#23252b] flex items-center justify-center text-[10px] md:text-xs text-gray-500 font-bold">
+                 {user.user_metadata?.username?.charAt(0) || 'U'}
+               </div>
+             </div>
+             <div className="flex-1 relative">
+               <textarea
+                 value={newComment}
+                 onChange={(e) => setNewComment(e.target.value)}
+                 placeholder="Leave a comment"
+                 className="w-full bg-[#16181d] border-b border-white/5 p-2.5 md:p-3 text-[13px] md:text-[14px] outline-none focus:border-white/20 min-h-[80px] md:min-h-[90px] text-white resize-none"
+               />
+               <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5">
+                 <button type="button" className="text-gray-500 hover:text-white transition-colors">
+                   <svg className="w-4 md:w-5 h-4 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                 </button>
+                 {newComment.trim() && (
+                    <button type="submit" disabled={submitting} className="bg-[#555] text-white px-4 md:px-6 py-1.5 rounded-sm text-[11px] font-bold uppercase hover:bg-white hover:text-black transition-all">
+                      {submitting ? '...' : 'Post'}
+                    </button>
+                 )}
+               </div>
+             </div>
+          </form>
         )}
+      </div>
+
+      <div className="divide-y divide-white/5">
+        {loading ? (
+          <div className="py-8 text-center text-gray-500 text-[10px] uppercase tracking-widest font-bold">Loading...</div>
+        ) : comments.filter(c => !c.parent_id).map(c => renderComment(c))}
       </div>
     </div>
   );

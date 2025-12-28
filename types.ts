@@ -81,4 +81,6 @@ export interface Comment {
   media_type: string;
   parent_id: string | null;
   avatar_url?: string;
+  likes?: number;
+  dislikes?: number;
 }

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, openProfileModal } = useAuth();
   
   const isActive = (path: string) => location.pathname === path;
 
@@ -24,10 +24,10 @@ const Navbar: React.FC = () => {
     },
     { 
       path: '/search', 
-      label: 'Discovery', 
+      label: 'Search', 
       activeClass: 'text-[#1ce783]',
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
       )
     },
     { 
@@ -78,14 +78,14 @@ const Navbar: React.FC = () => {
 
       <div className="flex items-center shrink-0">
         {user ? (
-          <Link 
-            to="/profile" 
+          <button 
+            onClick={openProfileModal}
             className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 md:px-3 md:py-1.5 rounded-full transition-all"
           >
             <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-[10px] md:text-xs font-black uppercase text-black">
               {initial}
             </div>
-          </Link>
+          </button>
         ) : (
           <button 
             onClick={openAuthModal}

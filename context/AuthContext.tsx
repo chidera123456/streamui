@@ -7,8 +7,11 @@ interface AuthContextType {
   user: SupabaseUser | null;
   loading: boolean;
   isAuthModalOpen: boolean;
+  isProfileModalOpen: boolean;
   openAuthModal: () => void;
   closeAuthModal: () => void;
+  openProfileModal: () => void;
+  closeProfileModal: () => void;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   register: (username: string, email: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
@@ -20,9 +23,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   useEffect(() => {
-    // Check active session with timeout safety
     const checkSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -38,7 +41,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     checkSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
@@ -49,6 +51,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
+  
+  const openProfileModal = () => setIsProfileModalOpen(true);
+  const closeProfileModal = () => setIsProfileModalOpen(false);
 
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -74,10 +79,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await supabase.auth.signOut();
+    setIsProfileModalOpen(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthModalOpen, openAuthModal, closeAuthModal, login, register, logout }}>
+    <AuthContext.Provider value={{ 
+      user, loading, isAuthModalOpen, isProfileModalOpen, 
+      openAuthModal, closeAuthModal, openProfileModal, closeProfileModal,
+      login, register, logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -163,10 +163,10 @@ const Search: React.FC = () => {
     <div className="pt-20 md:pt-24 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
       <div className="mb-8 md:mb-12 text-center">
         <h1 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter mb-2 md:mb-4">
-          Discovery <span className="text-[#1ce783]">Engine</span>
+          Search <span className="text-[#1ce783]">Engine</span>
         </h1>
-        <p className="text-gray-500 uppercase text-[8px] md:text-[10px] font-black tracking-[0.3em]">
-          {isCorrecting ? 'AI Refining Search...' : 'Fuzzy Logic & AI Powered'}
+        <p className="text-gray-500 uppercase text-[8px] md:text-[10px] font-black tracking-[0.3em] min-h-[1em]">
+          {isCorrecting ? 'AI Refining Search...' : ''}
         </p>
       </div>
 

@@ -6,9 +6,9 @@ import Home from './pages/Home';
 import Search from './pages/Search';
 import Details from './pages/Details';
 import Watchlist from './pages/Watchlist';
-import Profile from './pages/Profile';
 import Anime from './pages/Anime';
 import AuthModal from './components/AuthModal';
+import ProfileModal from './components/ProfileModal';
 import { AuthProvider } from './context/AuthContext';
 
 const App: React.FC = () => {
@@ -45,6 +45,7 @@ const App: React.FC = () => {
 
           {!showSplash && <Navbar />}
           <AuthModal />
+          <ProfileModal />
           
           <main className={showSplash ? 'hidden' : 'block'}>
             <Routes>
@@ -52,7 +53,6 @@ const App: React.FC = () => {
               <Route path="/search" element={<Search />} />
               <Route path="/anime" element={<Anime />} />
               <Route path="/watchlist" element={<Watchlist />} />
-              <Route path="/profile" element={<Profile />} />
               <Route path="/details/:type/:id" element={<Details />} />
             </Routes>
           </main>

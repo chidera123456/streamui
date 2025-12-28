@@ -275,8 +275,20 @@ const Details: React.FC = () => {
               </section>
             )}
 
-            {/* Recommendations Section */}
-            <section className="space-y-6 md:space-y-8">
+            {/* Community & Comments Section - Moved inside main column and placed before recommendations */}
+            {media && (
+              <section>
+                <CommentSection 
+                  mediaId={media.id} 
+                  mediaType={type || 'movie'} 
+                  mediaTitle={media.title || media.name}
+                  currentEpisode={type === 'tv' ? currentEpisode : undefined}
+                />
+              </section>
+            )}
+
+            {/* Recommendations Section - Placed after comments */}
+            <section className="space-y-6 md:space-y-8 pt-12">
               <div className="border-b border-white/10 pb-3 md:pb-4">
                   <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">More Like <span className="text-[#1ce783]">This</span></h2>
               </div>
@@ -323,16 +335,6 @@ const Details: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* Community & Comments Section */}
-        {media && (
-          <CommentSection 
-            mediaId={media.id} 
-            mediaType={type || 'movie'} 
-            mediaTitle={media.title || media.name}
-            currentEpisode={type === 'tv' ? currentEpisode : undefined}
-          />
-        )}
       </div>
     </div>
   );
