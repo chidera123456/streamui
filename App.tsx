@@ -21,6 +21,37 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Adsterra Delayed Monetization Logic
+  useEffect(() => {
+    const AD_DELAY_MS = 30 * 60 * 1000; // 30 Minutes
+    const AD_SCRIPT_URL = 'https://pl28351212.effectivegatecpm.com/4b/be/28/4bbe28318840efb9316eb08d90033a6b.js';
+
+    const triggerDelayedAd = () => {
+      console.log('ZenStream: 30-minute milestone reached. Injecting secondary monetization script.');
+      const script = document.createElement('script');
+      // Append timestamp for cache busting to ensure a fresh ad load
+      script.src = `${AD_SCRIPT_URL}?t=${Date.now()}`;
+      script.async = true;
+      document.head.appendChild(script);
+
+      // Clean up listeners immediately after trigger
+      window.removeEventListener('click', triggerDelayedAd);
+      window.removeEventListener('touchstart', triggerDelayedAd);
+    };
+
+    const sessionTimer = setTimeout(() => {
+      // Once 30 minutes pass, wait for the next user interaction
+      window.addEventListener('click', triggerDelayedAd);
+      window.addEventListener('touchstart', triggerDelayedAd);
+    }, AD_DELAY_MS);
+
+    return () => {
+      clearTimeout(sessionTimer);
+      window.removeEventListener('click', triggerDelayedAd);
+      window.removeEventListener('touchstart', triggerDelayedAd);
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
