@@ -38,7 +38,10 @@ export const useSearchHistory = () => {
         .order('created_at', { ascending: false })
         .limit(MAX_HISTORY);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Error (Fetch History):", error.message, error.details);
+        throw error;
+      }
       setSearchHistory(data?.map(h => h.query) || []);
     } catch (err) {
       console.error("Search history fetch failed:", err);
@@ -48,7 +51,6 @@ export const useSearchHistory = () => {
     }
   }, [user, fetchLocalHistory]);
 
-  // Sync history when user changes
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
@@ -70,11 +72,15 @@ export const useSearchHistory = () => {
     // 2. Database Sync
     if (user) {
       try {
-        await supabase
+        const { error } = await supabase
           .from('search_history')
           .insert({ user_id: user.id, query: trimmed });
+          
+        if (error) {
+          console.error("Supabase Error (Save History):", error.message, error.details);
+        }
       } catch (err) {
-        console.error("Failed to sync search to cloud", err);
+        console.error("Critical failure syncing search to cloud:", err);
       }
     }
   };
@@ -88,11 +94,13 @@ export const useSearchHistory = () => {
 
     if (user) {
       try {
-        await supabase
+        const { error } = await supabase
           .from('search_history')
           .delete()
           .eq('user_id', user.id)
           .eq('query', query);
+          
+        if (error) console.error("Supabase Error (Remove History):", error.message);
       } catch (err) {
         console.error("Failed to remove search from cloud", err);
       }
@@ -105,10 +113,12 @@ export const useSearchHistory = () => {
       localStorage.removeItem(STORAGE_KEY);
     } else {
       try {
-        await supabase
+        const { error } = await supabase
           .from('search_history')
           .delete()
           .eq('user_id', user.id);
+          
+        if (error) console.error("Supabase Error (Clear History):", error.message);
       } catch (err) {
         console.error("Failed to clear cloud history", err);
       }

@@ -6,6 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZenStream - Cinematic Discovery</title>
   
+  <!-- SEO & Social Meta Tags -->
+  <meta name="description" content="Explore millions of movies and series with ZenStream. Pure cinematic discovery powered by AI." />
+  <meta name="keywords" content="movies, series, streaming, zenstream, anime, cinematic discovery, AI search" />
+  <meta name="theme-color" content="#040404" />
+  <meta property="og:title" content="ZenStream - Cinematic Discovery" />
+  <meta property="og:description" content="Pure cinematic discovery powered by AI." />
+  <meta property="og:type" content="website" />
+  
+  <!-- Monetization: Adsterra -->
+  <script src="https://pl28351212.effectivegatecpm.com/4b/be/28/4bbe28318840efb9316eb08d90033a6b.js"></script>
+  
   <!-- Performance Preconnects -->
   <link rel="preconnect" href="https://image.tmdb.org">
   <link rel="preconnect" href="https://api.themoviedb.org">
@@ -28,7 +39,6 @@
       margin: 0;
       -webkit-tap-highlight-color: transparent;
       overflow-x: hidden;
-      /* Smooth hardware accelerated scrolling */
       scroll-behavior: smooth;
     }
     .hide-scrollbar::-webkit-scrollbar {
@@ -71,24 +81,7 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-
-    @keyframes commentIn {
-      0% { opacity: 0; transform: translateY(10px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-    .animate-comment-in {
-      animation: commentIn 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-    }
-
-    @keyframes commentOut {
-      0% { opacity: 1; transform: scale(1); }
-      100% { opacity: 0; transform: scale(0.98) translateY(-5px); }
-    }
-    .animate-comment-out {
-      animation: commentOut 0.3s ease-in forwards;
-    }
     
-    /* Optimize rendering performance */
     img { content-visibility: auto; }
   </style>
 <script type="importmap">
