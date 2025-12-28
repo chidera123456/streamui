@@ -1,0 +1,23 @@
+{
+  "name": "ZenStream - Cinematic Discovery",
+  "short_name": "ZenStream",
+  "description": "Explore millions of movies and series with ZenStream. Pure cinematic discovery.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#040404",
+  "theme_color": "#1ce783",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/fluency/192/000000/movie-projector.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://img.icons8.com/fluency/512/000000/movie-projector.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

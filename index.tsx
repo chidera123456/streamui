@@ -1,4 +1,3 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -8,6 +7,15 @@ window.onerror = function(message, source, lineno, colno, error) {
   console.error("Critical App Error:", message, "at", source, lineno, colno, error);
   return false;
 };
+
+// PWA Service Worker Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('ZenStream: SW Registered', reg.scope))
+      .catch(err => console.log('ZenStream: SW Failed', err));
+  });
+}
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
