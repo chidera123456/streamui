@@ -1,21 +1,23 @@
-const CACHE_NAME = 'zenstream-v1';
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html'
-];
+// ZenStream Service Worker
+const CACHE_NAME = 'zenstream-v2';
 
+// The install event is required for PWA status
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
-  );
+  self.skipWaiting();
 });
 
+// Activate the SW immediately
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
+
+// Standard fetch handler to satisfy Chrome's 'installable' requirement
 self.addEventListener('fetch', (event) => {
+  // We use a network-first strategy to avoid 'broken link' issues 
+  // if the cache gets out of sync with the deployment
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
     })
   );
 });
