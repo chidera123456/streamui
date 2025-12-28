@@ -90,23 +90,24 @@ const Search: React.FC = () => {
       if (searchQuery.trim()) {
         res = await searchMedia(searchQuery, type, pageNum, selectedYear);
         
-        // AUTO-CORRECTION LOGIC
-        // If results are empty on page 1, try AI correction
-        if (!isSilent && pageNum === 1 && res.results.length === 0 && searchQuery.length > 2) {
-          setIsCorrecting(true);
-          const aiCorrected = await getCorrectedQuery(searchQuery);
-          setIsCorrecting(false);
-          
-          if (aiCorrected) {
-            setCorrectedQuery(aiCorrected);
-            const correctedRes = await searchMedia(aiCorrected, type, 1, selectedYear);
-            res = correctedRes;
-            saveToHistory(aiCorrected);
-          }
-        }
-
         if (!isSilent && pageNum === 1) {
-          saveToHistory(searchQuery);
+          // AUTO-CORRECTION LOGIC
+          if (res.results.length === 0 && searchQuery.length > 2) {
+            setIsCorrecting(true);
+            const aiCorrected = await getCorrectedQuery(searchQuery);
+            setIsCorrecting(false);
+            
+            if (aiCorrected) {
+              setCorrectedQuery(aiCorrected);
+              const correctedRes = await searchMedia(aiCorrected, type, 1, selectedYear);
+              res = correctedRes;
+              saveToHistory(aiCorrected);
+            } else {
+              saveToHistory(searchQuery);
+            }
+          } else if (res.results.length > 0) {
+            saveToHistory(searchQuery);
+          }
         }
       } else if (type !== 'all' && (selectedGenre || selectedYear || minRating > 0)) {
         res = await discoverMedia(type, pageNum, { 
@@ -145,6 +146,7 @@ const Search: React.FC = () => {
 
   const handleHistoryClick = (h: string) => {
     setQuery(h);
+    setShowDropdown(false);
     triggerSearch(1, false, false, h);
   };
 
@@ -206,15 +208,15 @@ const Search: React.FC = () => {
                 className="w-full bg-[#111] border-b-2 border-white/10 px-0 py-3 md:py-4 text-lg md:text-xl outline-none focus:border-[#1ce783] transition-all"
               />
               
-              {showDropdown && (suggestions.length > 0 || (query.length === 0 && searchHistory.length > 0)) && (
+              {showDropdown && (suggestions.length > 0 || (query.trim() === '' && searchHistory.length > 0)) && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-[#0c0c0c]/95 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   
-                  {query.length === 0 && searchHistory.length > 0 && (
+                  {query.trim() === '' && searchHistory.length > 0 && (
                     <div>
                       <div className="p-3 border-b border-white/5 flex items-center justify-between">
                         <span className="text-[8px] font-black uppercase text-gray-500 tracking-[0.2em]">Recent Searches</span>
                         <button 
-                          onClick={(e) => { e.stopPropagation(); clearHistory(); }}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); clearHistory(); }}
                           className="text-[8px] font-black uppercase text-red-500/60 hover:text-red-500 transition-colors"
                         >
                           Clear All
@@ -227,6 +229,7 @@ const Search: React.FC = () => {
                             className="flex items-center group/item hover:bg-white/5 transition-colors"
                           >
                             <button
+                              type="button"
                               onClick={() => handleHistoryClick(h)}
                               className="flex-1 flex items-center gap-3 p-3 text-left"
                             >
@@ -236,7 +239,8 @@ const Search: React.FC = () => {
                               <span className="text-sm font-medium text-gray-300 group-hover/item:text-white truncate">{h}</span>
                             </button>
                             <button 
-                              onClick={(e) => { e.stopPropagation(); removeFromHistory(h); }}
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeFromHistory(h); }}
                               className="p-3 text-gray-600 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -286,6 +290,7 @@ const Search: React.FC = () => {
                         </Link>
                       ))}
                       <button 
+                        type="button"
                         onClick={() => triggerSearch(1)}
                         className="w-full p-3 text-center bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest text-[#1ce783] transition-colors"
                       >
