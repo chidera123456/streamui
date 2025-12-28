@@ -71,6 +71,22 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
+
+    @keyframes commentIn {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .animate-comment-in {
+      animation: commentIn 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    }
+
+    @keyframes commentOut {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.98) translateY(-5px); }
+    }
+    .animate-comment-out {
+      animation: commentOut 0.3s ease-in forwards;
+    }
     
     /* Optimize rendering performance */
     img { content-visibility: auto; }

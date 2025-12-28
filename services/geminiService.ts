@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AISuggestion } from "../types";
+import { AISuggestion, Comment } from "../types";
 
 const getAIClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -58,6 +58,31 @@ export const getAISuggestions = async (prompt: string): Promise<AISuggestion[]> 
   } catch (e) {
     console.error("Failed to parse Gemini suggestions", e);
     return [];
+  }
+};
+
+export const getCommentVibe = async (comments: Comment[], mediaTitle: string): Promise<string> => {
+  if (comments.length === 0) return "Silence awaits your first impression.";
+  
+  const ai = getAIClient();
+  const commentText = comments.map(c => `${c.username}: ${c.content}`).join('\n');
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `You are a cinematic vibe analyst. Here are some user comments about "${mediaTitle}":
+      
+      ${commentText}
+      
+      Synthesize these comments into a single, punchy, high-level "Collective Vibe" sentence (max 15 words). 
+      Make it sound sophisticated and observant. If comments are sparse, focus on the general mood.`,
+      config: {
+        temperature: 0.7,
+      }
+    });
+    return response.text?.trim() || "The community is currently gathering thoughts.";
+  } catch (e) {
+    return "The collective signal is faint but growing.";
   }
 };
 

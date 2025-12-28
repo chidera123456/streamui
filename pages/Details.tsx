@@ -7,6 +7,7 @@ import { BACKDROP_URL, IMG_URL, PLAYER_URL, TV_PLAYER_URL } from '../constants';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { useHistory } from '../hooks/useHistory';
 import MediaCard from '../components/MediaCard';
+import CommentSection from '../components/CommentSection';
 
 const Details: React.FC = () => {
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
@@ -201,126 +202,137 @@ const Details: React.FC = () => {
       )}
 
       {/* Info Content */}
-      <div className="max-w-7xl mx-auto px-4 md:px-16 py-8 md:py-16 grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
-        <div className="lg:col-span-2 space-y-8 md:space-y-12">
-          <section>
-            <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-3 md:mb-4">
-               <span className="text-[#1ce783] font-bold uppercase text-[10px] md:text-xs tracking-widest">Premium Content</span>
-               <span className="text-gray-400 font-bold text-xs md:text-base">{releaseYear}</span>
-               <div className="flex gap-2">
-                 {media?.genres?.slice(0, 3).map(g => (
-                   <span key={g.id} className="text-[#1ce783]/60 text-[8px] md:text-[10px] font-black uppercase tracking-tighter bg-white/5 px-2 py-0.5 rounded-sm">
-                     {g.name}
-                   </span>
-                 ))}
-               </div>
-            </div>
-            {/* Clamped description on mobile for better usability */}
-            <p className="text-gray-200 text-sm md:text-lg leading-relaxed line-clamp-3 md:line-clamp-none">
-              {media?.overview}
-            </p>
-          </section>
-
-          {/* Episode List Section */}
-          {type === 'tv' && media && (
-            <section className="space-y-6 md:space-y-8">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3 md:pb-4">
-                <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">Episodes</h2>
-                <div className="flex items-center gap-3 md:gap-4">
-                  <span className="text-[8px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">Season</span>
-                  <select 
-                    value={currentSeason} 
-                    onChange={(e) => changeSeason(Number(e.target.value))}
-                    className="bg-black border border-white/20 rounded px-3 md:px-4 py-1 md:py-1.5 text-white text-[10px] md:text-xs font-black uppercase outline-none focus:border-[#1ce783] transition-colors cursor-pointer"
-                  >
-                    {[...Array(media.number_of_seasons)].map((_, i) => (
-                      <option key={i} value={i + 1}> {i + 1}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex flex-nowrap overflow-x-auto gap-3 md:gap-4 pb-4 custom-scrollbar scroll-smooth">
-                {episodes.map((ep) => (
-                  <div 
-                    key={ep.id} 
-                    onClick={() => playMedia(ep.episode_number)}
-                    className={`min-w-[200px] md:min-w-[320px] max-w-[200px] md:max-w-[320px] flex flex-col gap-2 md:gap-3 p-2 md:p-3 rounded-sm transition-all cursor-pointer group shrink-0 ${currentEpisode === ep.episode_number && isPlaying ? 'bg-[#1ce783]/10 border border-[#1ce783]/40' : 'bg-white/5 hover:bg-white/10 border border-transparent'}`}
-                  >
-                    <div className="w-full aspect-video relative rounded-sm overflow-hidden bg-black/40">
-                      <img 
-                        src={ep.still_path ? `${IMG_URL}${ep.still_path}` : 'https://via.placeholder.com/400x225/111/444?text=Preview'} 
-                        alt={ep.name}
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
-                         <div className="w-8 h-8 rounded-full bg-[#1ce783] flex items-center justify-center text-black">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M4.5 3a.5.5 0 00-.5.5v13a.5.5 0 00.757.429l11-6.5a.5.5 0 000-.858l-11-6.5A.5.5 0 004.5 3z" />
-                            </svg>
-                         </div>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                         <h4 className="text-[10px] md:text-xs font-black text-white uppercase tracking-tight truncate">{ep.name}</h4>
-                         <span className="text-[8px] md:text-[10px] text-[#1ce783] font-bold">E{ep.episode_number}</span>
-                      </div>
-                      <p className="text-[9px] md:text-[10px] text-gray-500 line-clamp-2 leading-relaxed">{ep.overview || "No description available for this episode."}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Recommendations Section */}
-          <section className="space-y-6 md:space-y-8">
-             <div className="border-b border-white/10 pb-3 md:pb-4">
-                <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">More Like <span className="text-[#1ce783]">This</span></h2>
-             </div>
-             {loadingSimilar ? (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 md:gap-4">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="aspect-[2/3] bg-white/5 animate-pulse rounded-sm" />
+      <div className="max-w-7xl mx-auto px-4 md:px-16 py-8 md:py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
+          <div className="lg:col-span-2 space-y-8 md:space-y-12">
+            <section>
+              <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-3 md:mb-4">
+                <span className="text-[#1ce783] font-bold uppercase text-[10px] md:text-xs tracking-widest">Premium Content</span>
+                <span className="text-gray-400 font-bold text-xs md:text-base">{releaseYear}</span>
+                <div className="flex gap-2">
+                  {media?.genres?.slice(0, 3).map(g => (
+                    <span key={g.id} className="text-[#1ce783]/60 text-[8px] md:text-[10px] font-black uppercase tracking-tighter bg-white/5 px-2 py-0.5 rounded-sm">
+                      {g.name}
+                    </span>
                   ))}
                 </div>
-             ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
-                   {similarMedia.slice(0, 12).map((item) => (
-                      <MediaCard key={item.id} media={item} />
-                   ))}
+              </div>
+              <p className="text-gray-200 text-sm md:text-lg leading-relaxed line-clamp-3 md:line-clamp-none">
+                {media?.overview}
+              </p>
+            </section>
+
+            {/* Episode List Section */}
+            {type === 'tv' && media && (
+              <section className="space-y-6 md:space-y-8">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3 md:pb-4">
+                  <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">Episodes</h2>
+                  <div className="flex items-center gap-3 md:gap-4">
+                    <span className="text-[8px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">Season</span>
+                    <select 
+                      value={currentSeason} 
+                      onChange={(e) => changeSeason(Number(e.target.value))}
+                      className="bg-black border border-white/20 rounded px-3 md:px-4 py-1 md:py-1.5 text-white text-[10px] md:text-xs font-black uppercase outline-none focus:border-[#1ce783] transition-colors cursor-pointer"
+                    >
+                      {[...Array(media.number_of_seasons)].map((_, i) => (
+                        <option key={i} value={i + 1}> {i + 1}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-             )}
-          </section>
+
+                <div className="flex flex-nowrap overflow-x-auto gap-3 md:gap-4 pb-4 custom-scrollbar scroll-smooth">
+                  {episodes.map((ep) => (
+                    <div 
+                      key={ep.id} 
+                      onClick={() => playMedia(ep.episode_number)}
+                      className={`min-w-[200px] md:min-w-[320px] max-w-[200px] md:max-w-[320px] flex flex-col gap-2 md:gap-3 p-2 md:p-3 rounded-sm transition-all cursor-pointer group shrink-0 ${currentEpisode === ep.episode_number && isPlaying ? 'bg-[#1ce783]/10 border border-[#1ce783]/40' : 'bg-white/5 hover:bg-white/10 border border-transparent'}`}
+                    >
+                      <div className="w-full aspect-video relative rounded-sm overflow-hidden bg-black/40">
+                        <img 
+                          src={ep.still_path ? `${IMG_URL}${ep.still_path}` : 'https://via.placeholder.com/400x225/111/444?text=Preview'} 
+                          alt={ep.name}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
+                          <div className="w-8 h-8 rounded-full bg-[#1ce783] flex items-center justify-center text-black">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M4.5 3a.5.5 0 00-.5.5v13a.5.5 0 00.757.429l11-6.5a.5.5 0 000-.858l-11-6.5A.5.5 0 004.5 3z" />
+                              </svg>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-[10px] md:text-xs font-black text-white uppercase tracking-tight truncate">{ep.name}</h4>
+                          <span className="text-[8px] md:text-[10px] text-[#1ce783] font-bold">E{ep.episode_number}</span>
+                        </div>
+                        <p className="text-[9px] md:text-[10px] text-gray-500 line-clamp-2 leading-relaxed">{ep.overview || "No description available for this episode."}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Recommendations Section */}
+            <section className="space-y-6 md:space-y-8">
+              <div className="border-b border-white/10 pb-3 md:pb-4">
+                  <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">More Like <span className="text-[#1ce783]">This</span></h2>
+              </div>
+              {loadingSimilar ? (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 md:gap-4">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} className="aspect-[2/3] bg-white/5 animate-pulse rounded-sm" />
+                    ))}
+                  </div>
+              ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
+                    {similarMedia.slice(0, 12).map((item) => (
+                        <MediaCard key={item.id} media={item} />
+                    ))}
+                  </div>
+              )}
+            </section>
+          </div>
+
+          {/* Sidebar Info */}
+          <div className="lg:col-span-1 space-y-8 md:space-y-10">
+            <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8 space-y-6">
+                <div>
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Original Language</p>
+                  <p className="text-white font-black uppercase italic">{media?.original_language === 'en' ? 'English' : media?.original_language}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Popularity Score</p>
+                  <div className="flex items-center gap-2">
+                      <span className="text-white font-black text-xl italic">{media?.popularity.toFixed(0)}</span>
+                      <span className="text-[#1ce783] text-[10px] font-black uppercase tracking-tighter">Trending</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Genres</p>
+                  <div className="flex flex-wrap gap-2">
+                      {media?.genres?.map(g => (
+                        <span key={g.id} className="bg-white/5 border border-white/10 px-2 py-1 rounded text-[8px] font-black uppercase text-gray-300">
+                          {g.name}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+            </div>
+          </div>
         </div>
 
-        {/* Sidebar Info */}
-        <div className="lg:col-span-1 space-y-8 md:space-y-10">
-           <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8 space-y-6">
-              <div>
-                 <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Original Language</p>
-                 <p className="text-white font-black uppercase italic">{media?.original_language === 'en' ? 'English' : media?.original_language}</p>
-              </div>
-              <div>
-                 <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Popularity Score</p>
-                 <div className="flex items-center gap-2">
-                    <span className="text-white font-black text-xl italic">{media?.popularity.toFixed(0)}</span>
-                    <span className="text-[#1ce783] text-[10px] font-black uppercase tracking-tighter">Trending</span>
-                 </div>
-              </div>
-              <div>
-                 <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Genres</p>
-                 <div className="flex flex-wrap gap-2">
-                    {media?.genres?.map(g => (
-                      <span key={g.id} className="bg-white/5 border border-white/10 px-2 py-1 rounded text-[8px] font-black uppercase text-gray-300">
-                        {g.name}
-                      </span>
-                    ))}
-                 </div>
-              </div>
-           </div>
-        </div>
+        {/* Community & Comments Section */}
+        {media && (
+          <CommentSection 
+            mediaId={media.id} 
+            mediaType={type || 'movie'} 
+            mediaTitle={media.title || media.name}
+            currentEpisode={type === 'tv' ? currentEpisode : undefined}
+          />
+        )}
       </div>
     </div>
   );
