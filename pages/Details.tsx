@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getDetails, getSeasonEpisodes, fetchSimilar } from '../services/tmdbService';
 import { Movie, Episode } from '../types';
@@ -20,12 +20,15 @@ const Details: React.FC = () => {
   const [playerLoading, setPlayerLoading] = useState(true);
   const [showTrailer, setShowTrailer] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadStartTime, setLoadStartTime] = useState<number>(0);
+  const [showRefreshHint, setShowRefreshHint] = useState(false);
   
   const [similarMedia, setSimilarMedia] = useState<Movie[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { addToHistory } = useHistory();
+  const refreshTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!id || !type) return;
@@ -34,6 +37,7 @@ const Details: React.FC = () => {
       setSimilarMedia([]);
       setIsPlaying(false);
       setShowTrailer(false);
+      setShowRefreshHint(false);
       try {
         const data = await getDetails(Number(id), type);
         setMedia(data);
@@ -53,6 +57,18 @@ const Details: React.FC = () => {
     loadMedia();
     window.scrollTo(0, 0);
   }, [id, type]);
+
+  useEffect(() => {
+    if (playerLoading && isPlaying) {
+      refreshTimerRef.current = window.setTimeout(() => {
+        setShowRefreshHint(true);
+      }, 8000); // Show help hint if buffering > 8s
+    } else {
+      setShowRefreshHint(false);
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    }
+    return () => { if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current); };
+  }, [playerLoading, isPlaying]);
 
   const loadRecommendations = async (mediaId: number, mediaType: 'movie' | 'tv') => {
     setLoadingSimilar(true);
@@ -81,19 +97,35 @@ const Details: React.FC = () => {
     setPlayerLoading(true);
     setShowTrailer(false);
     setIsPlaying(true);
+    setShowRefreshHint(false);
+    setLoadStartTime(Date.now());
     
     // Add to history
     if (media) {
-      addToHistory(media, type === 'tv' ? currentSeason : undefined, ep);
+      addToHistory(media, type === 'tv' ? currentSeason : undefined, ep || (type === 'tv' ? currentEpisode : undefined));
     }
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const refreshPlayer = () => {
+    setPlayerLoading(true);
+    setShowRefreshHint(false);
+    const currentIframe = document.querySelector('iframe');
+    if (currentIframe) {
+      const src = currentIframe.src;
+      currentIframe.src = '';
+      setTimeout(() => {
+        currentIframe.src = src;
+      }, 50);
+    }
   };
 
   const inList = media ? isInWatchlist(media.id) : false;
   const trailer = media?.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer') || 
                   media?.videos?.results?.find(v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip'));
 
+  // Use the specific API versioning for faster loading if available
   const embedUrl = type === 'movie' 
     ? `${PLAYER_URL}/${media?.id}`
     : `${TV_PLAYER_URL}/${media?.id}/${currentSeason}/${currentEpisode}`;
@@ -104,11 +136,20 @@ const Details: React.FC = () => {
     <div className="pt-16 min-h-screen pb-20 bg-[#040404]">
       {/* Player Section */}
       {isPlaying ? (
-        <div className="relative w-full aspect-video bg-black shadow-2xl overflow-hidden">
+        <div className="relative w-full aspect-video bg-black shadow-2xl overflow-hidden group/player">
           {playerLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-20">
-              <div className="w-8 md:w-12 h-8 md:h-12 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin mb-4"></div>
-              <p className="text-[#1ce783] font-black uppercase italic tracking-widest text-[8px] md:text-[10px]">Establishing ZenConnection...</p>
+              <div className="w-10 md:w-16 h-10 md:h-16 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin mb-6"></div>
+              <p className="text-[#1ce783] font-black uppercase italic tracking-[0.2em] text-[10px] md:text-xs animate-pulse">Syncing High-Speed Buffer...</p>
+              
+              {showRefreshHint && (
+                <button 
+                  onClick={refreshPlayer}
+                  className="mt-8 bg-white/10 hover:bg-white/20 border border-white/10 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all animate-in fade-in slide-in-from-bottom-2"
+                >
+                  Slow Connection? Refresh Stream
+                </button>
+              )}
             </div>
           )}
           <iframe 
@@ -118,20 +159,35 @@ const Details: React.FC = () => {
             allowFullScreen
             onLoad={() => setPlayerLoading(false)}
             title="Streaming Player"
+            loading="eager"
+            referrerPolicy="origin"
+            allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope"
           />
-          <button 
-            onClick={() => setIsPlaying(false)}
-            className="absolute top-4 right-4 bg-black/50 hover:bg-black p-2 rounded-full text-white transition-all z-30"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          
+          <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity z-30">
+            <button 
+              onClick={refreshPlayer}
+              title="Refresh Buffer"
+              className="bg-black/50 hover:bg-white hover:text-black p-2 rounded-full text-white transition-all backdrop-blur-md border border-white/10"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <button 
+              onClick={() => setIsPlaying(false)}
+              className="bg-black/50 hover:bg-red-600 p-2 rounded-full text-white transition-all backdrop-blur-md border border-white/10"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       ) : showTrailer && trailer ? (
         <div className="relative w-full aspect-video bg-black shadow-2xl overflow-hidden">
            <iframe 
-            src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1`}
+            src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&modestbranding=1&rel=0`}
             className="w-full h-full"
             frameBorder="0"
             allowFullScreen
@@ -174,7 +230,7 @@ const Details: React.FC = () => {
                 <div className="flex flex-wrap gap-2 md:gap-4">
                   <button 
                     onClick={() => playMedia()}
-                    className="bg-white text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-[#1ce783] transition-all transform active:scale-95 flex items-center gap-2 md:gap-3 uppercase tracking-widest"
+                    className="bg-white text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-[#1ce783] transition-all transform active:scale-95 flex items-center gap-2 md:gap-3 uppercase tracking-widest shadow-xl shadow-black/40"
                   >
                     Watch Now
                   </button>
@@ -253,6 +309,7 @@ const Details: React.FC = () => {
                           src={ep.still_path ? `${IMG_URL}${ep.still_path}` : 'https://via.placeholder.com/400x225/111/444?text=Preview'} 
                           alt={ep.name}
                           className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                          loading="lazy"
                         />
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
                           <div className="w-8 h-8 rounded-full bg-[#1ce783] flex items-center justify-center text-black">
@@ -275,7 +332,7 @@ const Details: React.FC = () => {
               </section>
             )}
 
-            {/* Community & Comments Section - Moved inside main column and placed before recommendations */}
+            {/* Community & Comments Section */}
             {media && (
               <section>
                 <CommentSection 
@@ -287,7 +344,7 @@ const Details: React.FC = () => {
               </section>
             )}
 
-            {/* Recommendations Section - Placed after comments */}
+            {/* Recommendations Section */}
             <section className="space-y-6 md:space-y-8 pt-12">
               <div className="border-b border-white/10 pb-3 md:pb-4">
                   <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">More Like <span className="text-[#1ce783]">This</span></h2>
