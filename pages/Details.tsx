@@ -57,7 +57,7 @@ const Details: React.FC = () => {
         if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
         previewTimerRef.current = window.setTimeout(() => {
           setAutoPreviewActive(true);
-        }, 4000); // Increased delay for smoother initial poster visibility
+        }, 3500); // Cinematic delay
 
       } catch (err) {
         console.error(err);
@@ -122,6 +122,26 @@ const Details: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleNextEpisode = async () => {
+    if (type !== 'tv' || !media) return;
+
+    const nextEp = currentEpisode + 1;
+    const currentSeasonEpisodes = episodes.length;
+
+    if (nextEp <= currentSeasonEpisodes) {
+      playMedia(nextEp);
+    } else if (currentSeason < (media.number_of_seasons || 0)) {
+      const nextSeason = currentSeason + 1;
+      setCurrentSeason(nextSeason);
+      const data = await getSeasonEpisodes(Number(id), nextSeason);
+      setEpisodes(data);
+      setCurrentEpisode(1);
+      playMedia(1);
+    } else {
+      setIsPlaying(false);
+    }
+  };
+
   const refreshPlayer = () => {
     setPlayerLoading(true);
     setShowRefreshHint(false);
@@ -145,10 +165,12 @@ const Details: React.FC = () => {
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
 
-  // Construct YouTube URL with essential parameters to fix Error 150/153
+  // Construct YouTube URL with AUDIO ENABLED (mute=0) and origin parameters
   const backgroundTrailerUrl = trailer 
-    ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&enablejsapi=1&loop=1&playlist=${trailer.key}&origin=${window.location.origin}`
+    ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&enablejsapi=1&loop=1&playlist=${trailer.key}&origin=${window.location.origin}`
     : '';
+
+  const hasNextEpisode = type === 'tv' && media && (currentEpisode < episodes.length || currentSeason < (media.number_of_seasons || 0));
 
   return (
     <div className="pt-16 min-h-screen pb-20 bg-[#040404]">
@@ -180,8 +202,20 @@ const Details: React.FC = () => {
             referrerPolicy="origin"
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope"
           />
+          
           <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity z-30">
-            <button onClick={refreshPlayer} className="bg-black/50 hover:bg-white hover:text-black p-2 rounded-full text-white transition-all backdrop-blur-md border border-white/10">
+            {hasNextEpisode && !playerLoading && (
+              <button 
+                onClick={handleNextEpisode}
+                className="bg-[#1ce783] hover:bg-white text-black px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all backdrop-blur-md shadow-xl flex items-center gap-2"
+              >
+                Next Episode
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
+            <button onClick={refreshPlayer} title="Refresh Buffer" className="bg-black/50 hover:bg-white hover:text-black p-2 rounded-full text-white transition-all backdrop-blur-md border border-white/10">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
@@ -199,8 +233,8 @@ const Details: React.FC = () => {
             <div className="absolute inset-0 bg-[#0a0a0a] animate-pulse" />
           ) : (
             <>
-              {/* Poster Layer (Fades out when trailer starts) */}
-              <div className={`absolute inset-0 z-0 transition-opacity duration-[2000ms] ${autoPreviewActive && trailer ? 'opacity-0' : 'opacity-100'}`}>
+              {/* Poster Layer */}
+              <div className={`absolute inset-0 z-0 transition-opacity duration-[1500ms] ${autoPreviewActive && trailer ? 'opacity-0' : 'opacity-100'}`}>
                 <img 
                   src={`${BACKDROP_URL}${media.backdrop_path}`}
                   alt={media.title || media.name}
@@ -208,9 +242,9 @@ const Details: React.FC = () => {
                 />
               </div>
 
-              {/* Background Trailer Layer */}
+              {/* Background Trailer Layer with Audio */}
               {trailer && (
-                <div className={`absolute inset-0 z-0 transition-opacity duration-[2000ms] overflow-hidden ${autoPreviewActive ? 'opacity-40' : 'opacity-0'}`}>
+                <div className={`absolute inset-0 z-0 transition-opacity duration-[1500ms] overflow-hidden ${autoPreviewActive ? 'opacity-60' : 'opacity-0'}`}>
                   <iframe 
                     src={backgroundTrailerUrl}
                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] h-[115%] aspect-video pointer-events-none"
@@ -221,11 +255,11 @@ const Details: React.FC = () => {
                 </div>
               )}
 
-              {/* Static Gradients & Overlays (Persistent) */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-transparent to-[#040404]/30 z-10" />
+              {/* Static Overlays */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-transparent to-[#040404]/40 z-10" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-[#040404]/40 to-transparent z-10" />
 
-              {/* Interactive Interface (Always on Top) */}
+              {/* Content Overlay */}
               <div className="absolute bottom-0 left-0 p-4 md:p-16 w-full max-w-5xl z-20">
                 <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4 animate-in slide-in-from-left-4 duration-700">
                   <span className="bg-[#1ce783] text-black px-2 md:px-3 py-0.5 rounded-sm text-[8px] md:text-[10px] font-black uppercase tracking-tighter">ZENSTREAM SELECTION</span>
@@ -267,7 +301,7 @@ const Details: React.FC = () => {
         </div>
       )}
 
-      {/* Info Content */}
+      {/* Details Section */}
       <div className="max-w-7xl mx-auto px-4 md:px-16 py-8 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
           <div className="lg:col-span-2 space-y-8 md:space-y-12">
@@ -283,12 +317,11 @@ const Details: React.FC = () => {
                   ))}
                 </div>
               </div>
-              <p className="text-gray-200 text-sm md:text-lg leading-relaxed line-clamp-3 md:line-clamp-none">
+              <p className="text-gray-200 text-sm md:text-lg leading-relaxed">
                 {media?.overview}
               </p>
             </section>
 
-            {/* Episode List Section */}
             {type === 'tv' && media && (
               <section className="space-y-6 md:space-y-8">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3 md:pb-4">
@@ -342,7 +375,6 @@ const Details: React.FC = () => {
               </section>
             )}
 
-            {/* Discussion Section */}
             <section>
               <CommentSection 
                 mediaId={media?.id || 0} 
@@ -352,7 +384,6 @@ const Details: React.FC = () => {
               />
             </section>
 
-            {/* Recommendations Section */}
             <section className="space-y-6 md:space-y-8 pt-12">
               <div className="border-b border-white/10 pb-3 md:pb-4">
                   <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">More Like <span className="text-[#1ce783]">This</span></h2>
@@ -373,7 +404,6 @@ const Details: React.FC = () => {
             </section>
           </div>
 
-          {/* Sidebar Info */}
           <div className="lg:col-span-1 space-y-8 md:space-y-10">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 space-y-6">
                 <div>
