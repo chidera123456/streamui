@@ -57,7 +57,7 @@ const Details: React.FC = () => {
         if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
         previewTimerRef.current = window.setTimeout(() => {
           setAutoPreviewActive(true);
-        }, 3500); // 3.5 seconds delay before video starts
+        }, 4000); // Increased delay for smoother initial poster visibility
 
       } catch (err) {
         console.error(err);
@@ -111,7 +111,7 @@ const Details: React.FC = () => {
     }
     setPlayerLoading(true);
     setShowTrailer(false);
-    setAutoPreviewActive(false); // Disable background preview when main player is active
+    setAutoPreviewActive(false); 
     setIsPlaying(true);
     setShowRefreshHint(false);
     
@@ -145,9 +145,14 @@ const Details: React.FC = () => {
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
 
+  // Construct YouTube URL with essential parameters to fix Error 150/153
+  const backgroundTrailerUrl = trailer 
+    ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&enablejsapi=1&loop=1&playlist=${trailer.key}&origin=${window.location.origin}`
+    : '';
+
   return (
     <div className="pt-16 min-h-screen pb-20 bg-[#040404]">
-      {/* Dynamic Player / Hero Section */}
+      {/* Hero / Main Player Section */}
       {isPlaying ? (
         <div className="relative w-full aspect-video bg-black shadow-2xl overflow-hidden group/player">
           {playerLoading && (
@@ -189,36 +194,38 @@ const Details: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="relative h-[60vh] md:h-[85vh] w-full bg-black overflow-hidden shadow-2xl">
+        <div className="relative h-[65vh] md:h-[90vh] w-full bg-black overflow-hidden shadow-2xl">
           {loading || !media ? (
             <div className="absolute inset-0 bg-[#0a0a0a] animate-pulse" />
           ) : (
             <>
-              {/* Layer 1: Static Backdrop (Shows First) */}
-              <img 
-                src={`${BACKDROP_URL}${media.backdrop_path}`}
-                alt={media.title || media.name}
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${autoPreviewActive && trailer ? 'opacity-30' : 'opacity-100'}`}
-              />
+              {/* Poster Layer (Fades out when trailer starts) */}
+              <div className={`absolute inset-0 z-0 transition-opacity duration-[2000ms] ${autoPreviewActive && trailer ? 'opacity-0' : 'opacity-100'}`}>
+                <img 
+                  src={`${BACKDROP_URL}${media.backdrop_path}`}
+                  alt={media.title || media.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
 
-              {/* Layer 2: Auto-Preview Video (Shows after delay) */}
-              {autoPreviewActive && trailer && (
-                <div className="absolute inset-0 z-0 animate-in fade-in duration-1000">
+              {/* Background Trailer Layer */}
+              {trailer && (
+                <div className={`absolute inset-0 z-0 transition-opacity duration-[2000ms] overflow-hidden ${autoPreviewActive ? 'opacity-40' : 'opacity-0'}`}>
                   <iframe 
-                    src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&loop=1&playlist=${trailer.key}`}
-                    className="w-full h-full scale-[1.3] pointer-events-none"
+                    src={backgroundTrailerUrl}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] h-[115%] aspect-video pointer-events-none"
                     frameBorder="0"
                     allow="autoplay; encrypted-media"
-                    title="Background Preview"
+                    title="Cinematic Preview"
                   />
                 </div>
               )}
 
-              {/* Layer 3: Gradients for UI readability */}
+              {/* Static Gradients & Overlays (Persistent) */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-transparent to-[#040404]/30 z-10" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent z-10" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-[#040404]/40 to-transparent z-10" />
 
-              {/* Layer 4: Interactive UI Overlay */}
+              {/* Interactive Interface (Always on Top) */}
               <div className="absolute bottom-0 left-0 p-4 md:p-16 w-full max-w-5xl z-20">
                 <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4 animate-in slide-in-from-left-4 duration-700">
                   <span className="bg-[#1ce783] text-black px-2 md:px-3 py-0.5 rounded-sm text-[8px] md:text-[10px] font-black uppercase tracking-tighter">ZENSTREAM SELECTION</span>
@@ -335,17 +342,15 @@ const Details: React.FC = () => {
               </section>
             )}
 
-            {/* Community Section */}
-            {media && (
-              <section>
-                <CommentSection 
-                  mediaId={media.id} 
-                  mediaType={type || 'movie'} 
-                  mediaTitle={media.title || media.name}
-                  currentEpisode={type === 'tv' ? currentEpisode : undefined}
-                />
-              </section>
-            )}
+            {/* Discussion Section */}
+            <section>
+              <CommentSection 
+                mediaId={media?.id || 0} 
+                mediaType={type || 'movie'} 
+                mediaTitle={media?.title || media?.name}
+                currentEpisode={type === 'tv' ? currentEpisode : undefined}
+              />
+            </section>
 
             {/* Recommendations Section */}
             <section className="space-y-6 md:space-y-8 pt-12">
