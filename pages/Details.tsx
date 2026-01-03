@@ -19,8 +19,8 @@ const Details: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playerLoading, setPlayerLoading] = useState(true);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [autoPreviewActive, setAutoPreviewActive] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [loadStartTime, setLoadStartTime] = useState<number>(0);
   const [showRefreshHint, setShowRefreshHint] = useState(false);
   
   const [similarMedia, setSimilarMedia] = useState<Movie[]>([]);
@@ -28,7 +28,9 @@ const Details: React.FC = () => {
   
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { addToHistory } = useHistory();
+  
   const refreshTimerRef = useRef<number | null>(null);
+  const previewTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!id || !type) return;
@@ -37,7 +39,9 @@ const Details: React.FC = () => {
       setSimilarMedia([]);
       setIsPlaying(false);
       setShowTrailer(false);
+      setAutoPreviewActive(false);
       setShowRefreshHint(false);
+      
       try {
         const data = await getDetails(Number(id), type);
         setMedia(data);
@@ -48,6 +52,13 @@ const Details: React.FC = () => {
         }
 
         loadRecommendations(Number(id), type);
+
+        // Start Auto-Preview Timer
+        if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+        previewTimerRef.current = window.setTimeout(() => {
+          setAutoPreviewActive(true);
+        }, 3500); // 3.5 seconds delay before video starts
+
       } catch (err) {
         console.error(err);
       } finally {
@@ -56,13 +67,17 @@ const Details: React.FC = () => {
     };
     loadMedia();
     window.scrollTo(0, 0);
+
+    return () => {
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    };
   }, [id, type]);
 
   useEffect(() => {
     if (playerLoading && isPlaying) {
       refreshTimerRef.current = window.setTimeout(() => {
         setShowRefreshHint(true);
-      }, 8000); // Show help hint if buffering > 8s
+      }, 8000);
     } else {
       setShowRefreshHint(false);
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -96,11 +111,10 @@ const Details: React.FC = () => {
     }
     setPlayerLoading(true);
     setShowTrailer(false);
+    setAutoPreviewActive(false); // Disable background preview when main player is active
     setIsPlaying(true);
     setShowRefreshHint(false);
-    setLoadStartTime(Date.now());
     
-    // Add to history
     if (media) {
       addToHistory(media, type === 'tv' ? currentSeason : undefined, ep || (type === 'tv' ? currentEpisode : undefined));
     }
@@ -125,7 +139,6 @@ const Details: React.FC = () => {
   const trailer = media?.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer') || 
                   media?.videos?.results?.find(v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip'));
 
-  // Use the specific API versioning for faster loading if available
   const embedUrl = type === 'movie' 
     ? `${PLAYER_URL}/${media?.id}`
     : `${TV_PLAYER_URL}/${media?.id}/${currentSeason}/${currentEpisode}`;
@@ -134,14 +147,13 @@ const Details: React.FC = () => {
 
   return (
     <div className="pt-16 min-h-screen pb-20 bg-[#040404]">
-      {/* Player Section */}
+      {/* Dynamic Player / Hero Section */}
       {isPlaying ? (
         <div className="relative w-full aspect-video bg-black shadow-2xl overflow-hidden group/player">
           {playerLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-20">
               <div className="w-10 md:w-16 h-10 md:h-16 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin mb-6"></div>
               <p className="text-[#1ce783] font-black uppercase italic tracking-[0.2em] text-[10px] md:text-xs animate-pulse">Syncing High-Speed Buffer...</p>
-              
               {showRefreshHint && (
                 <button 
                   onClick={refreshPlayer}
@@ -163,86 +175,77 @@ const Details: React.FC = () => {
             referrerPolicy="origin"
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope"
           />
-          
           <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity z-30">
-            <button 
-              onClick={refreshPlayer}
-              title="Refresh Buffer"
-              className="bg-black/50 hover:bg-white hover:text-black p-2 rounded-full text-white transition-all backdrop-blur-md border border-white/10"
-            >
+            <button onClick={refreshPlayer} className="bg-black/50 hover:bg-white hover:text-black p-2 rounded-full text-white transition-all backdrop-blur-md border border-white/10">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <button 
-              onClick={() => setIsPlaying(false)}
-              className="bg-black/50 hover:bg-red-600 p-2 rounded-full text-white transition-all backdrop-blur-md border border-white/10"
-            >
+            <button onClick={() => setIsPlaying(false)} className="bg-black/50 hover:bg-red-600 p-2 rounded-full text-white transition-all backdrop-blur-md border border-white/10">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
         </div>
-      ) : showTrailer && trailer ? (
-        <div className="relative w-full aspect-video bg-black shadow-2xl overflow-hidden">
-           <iframe 
-            src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&modestbranding=1&rel=0`}
-            className="w-full h-full"
-            frameBorder="0"
-            allowFullScreen
-            title="Trailer"
-          />
-          <button 
-            onClick={() => setShowTrailer(false)}
-            className="absolute top-4 right-4 bg-black/50 hover:bg-black p-2 rounded-full text-white transition-all z-30"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
       ) : (
-        <>
+        <div className="relative h-[60vh] md:h-[85vh] w-full bg-black overflow-hidden shadow-2xl">
           {loading || !media ? (
-            <div className="relative h-[40vh] md:h-[75vh] w-full bg-[#0a0a0a] animate-pulse">
-               <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-transparent to-transparent" />
-            </div>
+            <div className="absolute inset-0 bg-[#0a0a0a] animate-pulse" />
           ) : (
-            <div className="relative h-[40vh] md:h-[75vh] overflow-hidden">
+            <>
+              {/* Layer 1: Static Backdrop (Shows First) */}
               <img 
                 src={`${BACKDROP_URL}${media.backdrop_path}`}
                 alt={media.title || media.name}
-                className="w-full h-full object-cover scale-105"
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${autoPreviewActive && trailer ? 'opacity-30' : 'opacity-100'}`}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-[#040404]/40 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent" />
-              
-              <div className="absolute bottom-0 left-0 p-4 md:p-16 w-full max-w-5xl">
-                <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4">
+
+              {/* Layer 2: Auto-Preview Video (Shows after delay) */}
+              {autoPreviewActive && trailer && (
+                <div className="absolute inset-0 z-0 animate-in fade-in duration-1000">
+                  <iframe 
+                    src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&loop=1&playlist=${trailer.key}`}
+                    className="w-full h-full scale-[1.3] pointer-events-none"
+                    frameBorder="0"
+                    allow="autoplay; encrypted-media"
+                    title="Background Preview"
+                  />
+                </div>
+              )}
+
+              {/* Layer 3: Gradients for UI readability */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-transparent to-[#040404]/30 z-10" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent z-10" />
+
+              {/* Layer 4: Interactive UI Overlay */}
+              <div className="absolute bottom-0 left-0 p-4 md:p-16 w-full max-w-5xl z-20">
+                <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4 animate-in slide-in-from-left-4 duration-700">
                   <span className="bg-[#1ce783] text-black px-2 md:px-3 py-0.5 rounded-sm text-[8px] md:text-[10px] font-black uppercase tracking-tighter">ZENSTREAM SELECTION</span>
                   <span className="text-white/80 text-[10px] md:text-xs font-bold">{releaseYear}</span>
                   <span className="bg-white/10 px-1.5 md:px-2 py-0.5 rounded text-[8px] md:text-[10px] font-black">4K HDR</span>
                 </div>
-                <h1 className="text-3xl md:text-8xl font-black uppercase italic tracking-tighter mb-4 md:mb-6 leading-none drop-shadow-2xl">
+                
+                <h1 className="text-3xl md:text-8xl font-black uppercase italic tracking-tighter mb-4 md:mb-8 leading-none drop-shadow-2xl animate-in slide-in-from-left-6 duration-700">
                   {media.title || media.name}
                 </h1>
-                <div className="flex flex-wrap gap-2 md:gap-4">
+                
+                <div className="flex flex-wrap gap-2 md:gap-4 animate-in slide-in-from-bottom-4 duration-1000">
                   <button 
                     onClick={() => playMedia()}
-                    className="bg-white text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-[#1ce783] transition-all transform active:scale-95 flex items-center gap-2 md:gap-3 uppercase tracking-widest shadow-xl shadow-black/40"
+                    className="bg-white text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-[#1ce783] transition-all transform active:scale-95 flex items-center gap-2 md:gap-3 uppercase tracking-widest shadow-2xl shadow-black/60"
                   >
                     Watch Now
                   </button>
                   
                   <button 
                     onClick={() => toggleWatchlist(media)}
-                    className="bg-white/10 backdrop-blur-md text-white border border-white/10 px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-white/20 transition-all flex items-center gap-2 md:gap-3 uppercase tracking-widest"
+                    className="bg-white/10 backdrop-blur-xl text-white border border-white/20 px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-white/20 transition-all flex items-center gap-2 md:gap-3 uppercase tracking-widest"
                   >
                     {inList ? 'Saved' : 'Add To List'}
                   </button>
 
-                  {trailer && (
+                  {trailer && !autoPreviewActive && (
                     <button 
                       onClick={() => setShowTrailer(true)}
                       className="bg-white/5 backdrop-blur-md text-white border border-white/5 px-6 md:px-8 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-white/10 transition-all uppercase tracking-widest hidden sm:block"
@@ -252,9 +255,9 @@ const Details: React.FC = () => {
                   )}
                 </div>
               </div>
-            </div>
+            </>
           )}
-        </>
+        </div>
       )}
 
       {/* Info Content */}
@@ -332,7 +335,7 @@ const Details: React.FC = () => {
               </section>
             )}
 
-            {/* Community & Comments Section */}
+            {/* Community Section */}
             {media && (
               <section>
                 <CommentSection 
@@ -367,7 +370,7 @@ const Details: React.FC = () => {
 
           {/* Sidebar Info */}
           <div className="lg:col-span-1 space-y-8 md:space-y-10">
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-6 md:p-8 space-y-6">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 space-y-6">
                 <div>
                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Original Language</p>
                   <p className="text-white font-black uppercase italic">{media?.original_language === 'en' ? 'English' : media?.original_language}</p>
