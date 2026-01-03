@@ -1,12 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { Link } from 'react-router-dom';
 
 const ProfileModal: React.FC = () => {
-  const { user, isProfileModalOpen, closeProfileModal, logout } = useAuth();
+  const { user, isProfileModalOpen, closeProfileModal, logout, updateProfile } = useAuth();
   const { watchlist } = useWatchlist();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -17,10 +23,37 @@ const ProfileModal: React.FC = () => {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      setNewUsername(user.user_metadata?.username || user.email?.split('@')[0] || '');
+    }
+  }, [user]);
+
   if (!isProfileModalOpen || !user) return null;
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUsername.trim()) return;
+    
+    setUpdateLoading(true);
+    setMessage(null);
+    
+    const res = await updateProfile({ username: newUsername });
+    
+    if (res.success) {
+      setMessage({ type: 'success', text: 'Identity synced across all comments.' });
+      setTimeout(() => {
+        setIsEditing(false);
+        setMessage(null);
+      }, 2000);
+    } else {
+      setMessage({ type: 'error', text: res.message });
+    }
+    setUpdateLoading(false);
   };
 
   const handleInstall = async () => {
@@ -46,6 +79,7 @@ const ProfileModal: React.FC = () => {
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       closeProfileModal();
+      setIsEditing(false);
     }
   };
 
@@ -61,7 +95,7 @@ const ProfileModal: React.FC = () => {
         <div className="relative h-32 bg-gradient-to-br from-[#1ce783]/20 via-[#1ce783]/10 to-cyan-500/20">
           <div className="absolute inset-0 bg-black/20"></div>
           <button 
-            onClick={closeProfileModal}
+            onClick={() => { closeProfileModal(); setIsEditing(false); }}
             className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors p-2 bg-black/20 rounded-full backdrop-blur-md"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -77,11 +111,61 @@ const ProfileModal: React.FC = () => {
 
         <div className="pt-14 pb-10 px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-black italic uppercase tracking-tighter mb-1">
-                {username}
-              </h1>
-              <p className="text-gray-400 font-medium text-sm">{user.email}</p>
+            <div className="flex-1">
+              {!isEditing ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-black italic uppercase tracking-tighter mb-1">
+                      {username}
+                    </h1>
+                    <button 
+                      onClick={() => setIsEditing(true)}
+                      className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-[#1ce783] transition-all"
+                      title="Edit Profile"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="text-gray-400 font-medium text-sm">{user.email}</p>
+                </>
+              ) : (
+                <form onSubmit={handleUpdate} className="space-y-3">
+                   <label className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Update Alias</label>
+                   <div className="flex flex-col gap-3">
+                     <input 
+                       autoFocus
+                       type="text"
+                       value={newUsername}
+                       onChange={(e) => setNewUsername(e.target.value)}
+                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-[#1ce783] transition-all font-bold"
+                       placeholder="New Username"
+                     />
+                     <div className="flex items-center gap-2">
+                       <button 
+                         type="submit"
+                         disabled={updateLoading}
+                         className="bg-[#1ce783] text-black px-6 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all disabled:opacity-50"
+                       >
+                         {updateLoading ? 'Syncing...' : 'Save & Sync'}
+                       </button>
+                       <button 
+                         type="button"
+                         onClick={() => { setIsEditing(false); setMessage(null); }}
+                         className="text-gray-500 hover:text-white px-4 py-2 font-black uppercase tracking-widest text-[10px]"
+                       >
+                         Cancel
+                       </button>
+                     </div>
+                   </div>
+                   {message && (
+                     <p className={`text-[10px] font-black uppercase tracking-widest mt-2 ${message.type === 'success' ? 'text-[#1ce783]' : 'text-red-500'}`}>
+                       {message.text}
+                     </p>
+                   )}
+                </form>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {deferredPrompt && (
@@ -132,7 +216,7 @@ const ProfileModal: React.FC = () => {
                     {watchlist.length}
                   </Link>
                 </div>
-                <p className="text-[10px] text-gray-500 italic">Cloud synchronized metadata.</p>
+                <p className="text-[10px] text-gray-500 italic">Cloud synchronized identity.</p>
               </div>
             </div>
           </div>

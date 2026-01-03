@@ -14,6 +14,7 @@ interface AuthContextType {
   closeProfileModal: () => void;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   register: (username: string, email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  updateProfile: (data: { username?: string }) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
 }
 
@@ -77,6 +78,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true, message: 'Account created successfully!' };
   };
 
+  const updateProfile = async (data: { username?: string }) => {
+    if (!user) return { success: false, message: 'No active session' };
+
+    // 1. Update Auth Metadata
+    const { data: updatedUser, error: authError } = await supabase.auth.updateUser({
+      data: { username: data.username }
+    });
+    
+    if (authError) return { success: false, message: authError.message };
+
+    // 2. Sync to public Profiles table (source of truth for lookups)
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      username: data.username,
+      updated_at: new Date().toISOString()
+    });
+
+    // 3. Batch update ALL historical comments to replace the old name
+    const { error: commentsError } = await supabase
+      .from('comments')
+      .update({ username: data.username })
+      .eq('user_id', user.id);
+
+    if (commentsError) console.warn("Some historical comments might not have synced:", commentsError.message);
+
+    setUser(updatedUser.user);
+    return { success: true, message: 'Identity updated globally!' };
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setIsProfileModalOpen(false);
@@ -86,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{ 
       user, loading, isAuthModalOpen, isProfileModalOpen, 
       openAuthModal, closeAuthModal, openProfileModal, closeProfileModal,
-      login, register, logout 
+      login, register, updateProfile, logout 
     }}>
       {children}
     </AuthContext.Provider>

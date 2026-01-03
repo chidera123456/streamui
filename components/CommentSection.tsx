@@ -11,12 +11,17 @@ interface Props {
   currentEpisode?: number;
 }
 
+interface ProfileData {
+  username?: string;
+  avatar_url?: string;
+}
+
 type SortOption = 'newest' | 'oldest' | 'top';
 
 const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "this title", currentEpisode }) => {
   const { user, openAuthModal } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, string>>({});
+  const [profiles, setProfiles] = useState<Record<string, ProfileData>>({});
   const [newComment, setNewComment] = useState('');
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -63,9 +68,12 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
   const fetchProfiles = async (userIds: string[]) => {
     if (userIds.length === 0) return;
     try {
-      const { data } = await supabase.from('profiles').select('id, avatar_url').in('id', userIds);
+      const { data } = await supabase.from('profiles').select('id, avatar_url, username').in('id', userIds);
       if (data) {
-        const profileMap = data.reduce((acc: any, p: any) => ({ ...acc, [p.id]: p.avatar_url }), {});
+        const profileMap = data.reduce((acc: any, p: any) => ({ 
+          ...acc, 
+          [p.id]: { avatar_url: p.avatar_url, username: p.username } 
+        }), {});
         setProfiles(prev => ({ ...prev, ...profileMap }));
       }
     } catch (err) {}
@@ -175,9 +183,12 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
     const replies = comments.filter(c => c.parent_id === comment.id);
     const isLiked = userLikes.has(comment.id);
     const isDisliked = userDislikes.has(comment.id);
-    const avatarUrl = profiles[comment.user_id];
+    
+    // Get latest profile data, fall back to comment snapshot if not loaded yet
+    const profile = profiles[comment.user_id];
+    const displayUsername = profile?.username || comment.username;
+    const avatarUrl = profile?.avatar_url;
 
-    // Mock badges for the aesthetic
     const isGoldUser = comment.likes && comment.likes > 5;
 
     return (
@@ -188,7 +199,7 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[10px] md:text-xs text-gray-500 bg-[#23252b]">
-                {comment.username.charAt(0)}
+                {displayUsername.charAt(0)}
               </div>
             )}
           </div>
@@ -197,7 +208,7 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 md:mb-1">
             <span className={`text-[12px] md:text-[13px] font-bold ${isGoldUser ? 'text-[#ffdd95]' : 'text-[#888]'}`}>
-              {comment.username}
+              {displayUsername}
             </span>
             {isGoldUser && (
               <span className="text-[8px] md:text-[9px] bg-[#332a18] text-[#ffdd95] px-1 rounded-[2px] font-bold uppercase tracking-tighter">CRAB</span>
