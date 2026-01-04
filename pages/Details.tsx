@@ -9,6 +9,14 @@ import { useHistory } from '../hooks/useHistory';
 import MediaCard from '../components/MediaCard';
 import CommentSection from '../components/CommentSection';
 
+// Extend Window interface for YouTube API
+declare global {
+  interface Window {
+    onYouTubeIframeAPIReady: () => void;
+    YT: any;
+  }
+}
+
 const Details: React.FC = () => {
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
   const [media, setMedia] = useState<Movie | null>(null);
@@ -18,10 +26,9 @@ const Details: React.FC = () => {
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [playerLoading, setPlayerLoading] = useState(true);
-  const [showTrailer, setShowTrailer] = useState(false);
+  
   const [autoPreviewActive, setAutoPreviewActive] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showRefreshHint, setShowRefreshHint] = useState(false);
   
   const [similarMedia, setSimilarMedia] = useState<Movie[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
@@ -29,8 +36,19 @@ const Details: React.FC = () => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { addToHistory } = useHistory();
   
-  const refreshTimerRef = useRef<number | null>(null);
   const previewTimerRef = useRef<number | null>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Initialize YouTube API
+  useEffect(() => {
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    }
+  }, []);
 
   useEffect(() => {
     if (!id || !type) return;
@@ -38,9 +56,7 @@ const Details: React.FC = () => {
       setLoading(true);
       setSimilarMedia([]);
       setIsPlaying(false);
-      setShowTrailer(false);
       setAutoPreviewActive(false);
-      setShowRefreshHint(false);
       
       try {
         const data = await getDetails(Number(id), type);
@@ -53,11 +69,11 @@ const Details: React.FC = () => {
 
         loadRecommendations(Number(id), type);
 
-        // Start Auto-Preview Timer
+        // Auto-play the cinematic preview after 3 seconds
         if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
         previewTimerRef.current = window.setTimeout(() => {
           setAutoPreviewActive(true);
-        }, 3500); // Cinematic delay
+        }, 3500);
 
       } catch (err) {
         console.error(err);
@@ -70,20 +86,25 @@ const Details: React.FC = () => {
 
     return () => {
       if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+      if (ytPlayerRef.current) ytPlayerRef.current.destroy();
     };
   }, [id, type]);
 
+  // Handle YouTube Player Events to detect video end
   useEffect(() => {
-    if (playerLoading && isPlaying) {
-      refreshTimerRef.current = window.setTimeout(() => {
-        setShowRefreshHint(true);
-      }, 8000);
-    } else {
-      setShowRefreshHint(false);
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    if (autoPreviewActive && iframeRef.current && window.YT && window.YT.Player) {
+      ytPlayerRef.current = new window.YT.Player(iframeRef.current, {
+        events: {
+          onStateChange: (event: any) => {
+            // YT.PlayerState.ENDED = 0
+            if (event.data === 0) {
+              setAutoPreviewActive(false);
+            }
+          }
+        }
+      });
     }
-    return () => { if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current); };
-  }, [playerLoading, isPlaying]);
+  }, [autoPreviewActive]);
 
   const loadRecommendations = async (mediaId: number, mediaType: 'movie' | 'tv') => {
     setLoadingSimilar(true);
@@ -110,49 +131,14 @@ const Details: React.FC = () => {
       setCurrentEpisode(ep);
     }
     setPlayerLoading(true);
-    setShowTrailer(false);
     setAutoPreviewActive(false); 
     setIsPlaying(true);
-    setShowRefreshHint(false);
     
     if (media) {
       addToHistory(media, type === 'tv' ? currentSeason : undefined, ep || (type === 'tv' ? currentEpisode : undefined));
     }
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleNextEpisode = async () => {
-    if (type !== 'tv' || !media) return;
-
-    const nextEp = currentEpisode + 1;
-    const currentSeasonEpisodes = episodes.length;
-
-    if (nextEp <= currentSeasonEpisodes) {
-      playMedia(nextEp);
-    } else if (currentSeason < (media.number_of_seasons || 0)) {
-      const nextSeason = currentSeason + 1;
-      setCurrentSeason(nextSeason);
-      const data = await getSeasonEpisodes(Number(id), nextSeason);
-      setEpisodes(data);
-      setCurrentEpisode(1);
-      playMedia(1);
-    } else {
-      setIsPlaying(false);
-    }
-  };
-
-  const refreshPlayer = () => {
-    setPlayerLoading(true);
-    setShowRefreshHint(false);
-    const currentIframe = document.querySelector('iframe');
-    if (currentIframe) {
-      const src = currentIframe.src;
-      currentIframe.src = '';
-      setTimeout(() => {
-        currentIframe.src = src;
-      }, 50);
-    }
   };
 
   const inList = media ? isInWatchlist(media.id) : false;
@@ -164,31 +150,19 @@ const Details: React.FC = () => {
     : `${TV_PLAYER_URL}/${media?.id}/${currentSeason}/${currentEpisode}`;
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
-
-  // Construct YouTube URL with AUDIO ENABLED (mute=0) and origin parameters
+  
+  // Notice loop=0 and enablejsapi=1
   const backgroundTrailerUrl = trailer 
-    ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&enablejsapi=1&loop=1&playlist=${trailer.key}&origin=${window.location.origin}`
+    ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&enablejsapi=1&origin=${window.location.origin}`
     : '';
-
-  const hasNextEpisode = type === 'tv' && media && (currentEpisode < episodes.length || currentSeason < (media.number_of_seasons || 0));
 
   return (
     <div className="pt-16 min-h-screen pb-20 bg-[#040404]">
-      {/* Hero / Main Player Section */}
       {isPlaying ? (
-        <div className="relative w-full aspect-video bg-black shadow-2xl overflow-hidden group/player">
+        <div className="relative w-full aspect-video max-w-7xl mx-auto md:rounded-xl mt-0 md:mt-8 bg-black shadow-2xl overflow-hidden group/player">
           {playerLoading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-20">
-              <div className="w-10 md:w-16 h-10 md:h-16 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin mb-6"></div>
-              <p className="text-[#1ce783] font-black uppercase italic tracking-[0.2em] text-[10px] md:text-xs animate-pulse">Syncing High-Speed Buffer...</p>
-              {showRefreshHint && (
-                <button 
-                  onClick={refreshPlayer}
-                  className="mt-8 bg-white/10 hover:bg-white/20 border border-white/10 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all animate-in fade-in slide-in-from-bottom-2"
-                >
-                  Slow Connection? Refresh Stream
-                </button>
-              )}
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a] z-20">
+              <div className="w-12 h-12 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
             </div>
           )}
           <iframe 
@@ -197,111 +171,90 @@ const Details: React.FC = () => {
             frameBorder="0"
             allowFullScreen
             onLoad={() => setPlayerLoading(false)}
-            title="Streaming Player"
-            loading="eager"
-            referrerPolicy="origin"
-            allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope"
+            title="Player"
           />
-          
-          <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity z-30">
-            {hasNextEpisode && !playerLoading && (
-              <button 
-                onClick={handleNextEpisode}
-                className="bg-[#1ce783] hover:bg-white text-black px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all backdrop-blur-md shadow-xl flex items-center gap-2"
-              >
-                Next Episode
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                </svg>
-              </button>
-            )}
-            <button onClick={refreshPlayer} title="Refresh Buffer" className="bg-black/50 hover:bg-white hover:text-black p-2 rounded-full text-white transition-all backdrop-blur-md border border-white/10">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <button onClick={() => setIsPlaying(false)} className="bg-black/50 hover:bg-red-600 p-2 rounded-full text-white transition-all backdrop-blur-md border border-white/10">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
         </div>
       ) : (
-        <div className="relative h-[65vh] md:h-[90vh] w-full bg-black overflow-hidden shadow-2xl">
+        <div className="relative h-[50vh] md:h-[90vh] w-full bg-black overflow-hidden shadow-2xl">
           {loading || !media ? (
             <div className="absolute inset-0 bg-[#0a0a0a] animate-pulse" />
           ) : (
             <>
-              {/* Poster Layer */}
+              {/* Main Backdrop / Poster Area */}
               <div className={`absolute inset-0 z-0 transition-opacity duration-[1500ms] ${autoPreviewActive && trailer ? 'opacity-0' : 'opacity-100'}`}>
                 <img 
-                  src={`${BACKDROP_URL}${media.backdrop_path}`}
-                  alt={media.title || media.name}
-                  className="w-full h-full object-cover"
+                  src={`${BACKDROP_URL}${media.backdrop_path}`} 
+                  alt="" 
+                  className="w-full h-full object-cover object-top" 
                 />
               </div>
 
-              {/* Background Trailer Layer with Audio */}
-              {trailer && (
-                <div className={`absolute inset-0 z-0 transition-opacity duration-[1500ms] overflow-hidden ${autoPreviewActive ? 'opacity-60' : 'opacity-0'}`}>
+              {/* Background Trailer (Preview) */}
+              {trailer && autoPreviewActive && (
+                <div className="absolute inset-0 z-0 overflow-hidden">
                   <iframe 
+                    ref={iframeRef}
                     src={backgroundTrailerUrl}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] h-[115%] aspect-video pointer-events-none"
-                    frameBorder="0"
-                    allow="autoplay; encrypted-media"
-                    title="Cinematic Preview"
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full scale-125 md:scale-105 pointer-events-none"
+                    frameBorder="0" allow="autoplay; encrypted-media" title="Cinematic Preview"
                   />
                 </div>
               )}
 
-              {/* Static Overlays */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-transparent to-[#040404]/40 z-10" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-[#040404]/40 to-transparent z-10" />
-
-              {/* Content Overlay */}
+              {/* Overlay Gradients - They stay visible to keep the text readable */}
+              <div className={`absolute inset-0 bg-gradient-to-t from-[#040404] via-transparent to-[#040404]/40 z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
+              <div className={`absolute inset-0 bg-gradient-to-r from-[#040404] via-[#040404]/40 to-transparent z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
+              
+              {/* Metadata Overlay - Stays visible throughout */}
               <div className="absolute bottom-0 left-0 p-4 md:p-16 w-full max-w-5xl z-20">
                 <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4 animate-in slide-in-from-left-4 duration-700">
                   <span className="bg-[#1ce783] text-black px-2 md:px-3 py-0.5 rounded-sm text-[8px] md:text-[10px] font-black uppercase tracking-tighter">ZENSTREAM SELECTION</span>
                   <span className="text-white/80 text-[10px] md:text-xs font-bold">{releaseYear}</span>
-                  <span className="bg-white/10 px-1.5 md:px-2 py-0.5 rounded text-[8px] md:text-[10px] font-black">4K HDR</span>
                 </div>
-                
-                <h1 className="text-3xl md:text-8xl font-black uppercase italic tracking-tighter mb-4 md:mb-8 leading-none drop-shadow-2xl animate-in slide-in-from-left-6 duration-700">
+                <h1 className="text-3xl md:text-8xl font-black uppercase italic tracking-tighter mb-4 md:mb-8 leading-none drop-shadow-2xl animate-in slide-in-from-left-6 duration-700 line-clamp-2">
                   {media.title || media.name}
                 </h1>
-                
                 <div className="flex flex-wrap gap-2 md:gap-4 animate-in slide-in-from-bottom-4 duration-1000">
-                  <button 
-                    onClick={() => playMedia()}
-                    className="bg-white text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-[#1ce783] transition-all transform active:scale-95 flex items-center gap-2 md:gap-3 uppercase tracking-widest shadow-2xl shadow-black/60"
-                  >
-                    Watch Now
-                  </button>
-                  
-                  <button 
-                    onClick={() => toggleWatchlist(media)}
-                    className="bg-white/10 backdrop-blur-xl text-white border border-white/20 px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-white/20 transition-all flex items-center gap-2 md:gap-3 uppercase tracking-widest"
-                  >
-                    {inList ? 'Saved' : 'Add To List'}
-                  </button>
-
-                  {trailer && !autoPreviewActive && (
-                    <button 
-                      onClick={() => setShowTrailer(true)}
-                      className="bg-white/5 backdrop-blur-md text-white border border-white/5 px-6 md:px-8 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-white/10 transition-all uppercase tracking-widest hidden sm:block"
-                    >
-                      Trailer
-                    </button>
-                  )}
+                  <button onClick={() => playMedia()} className="bg-white text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-[#1ce783] transition-all transform active:scale-95 flex items-center gap-2 md:gap-3 uppercase tracking-widest shadow-2xl">Watch Now</button>
+                  <button onClick={() => toggleWatchlist(media)} className="bg-white/10 backdrop-blur-xl text-white border border-white/20 px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-white/20 transition-all flex items-center gap-2 md:gap-3 uppercase tracking-widest">{inList ? 'Saved' : 'Add To List'}</button>
                 </div>
               </div>
+
+              {/* Rolling Trailer Toggle Button - Optimized size for mobile */}
+              {trailer && (
+                <div className="absolute top-24 right-4 md:right-16 z-30 flex flex-col items-center gap-2 md:gap-3">
+                  <button 
+                    onClick={() => setAutoPreviewActive(!autoPreviewActive)}
+                    className={`relative w-10 h-10 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden shadow-2xl group/toggle ${
+                      autoPreviewActive 
+                        ? 'bg-[#1ce783] text-black scale-110 ring-4 ring-[#1ce783]/20' 
+                        : 'bg-black/40 backdrop-blur-xl border border-white/20 text-white hover:bg-[#1ce783] hover:text-black'
+                    }`}
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-tr from-[#1ce783] to-cyan-500 opacity-0 group-hover/toggle:opacity-100 transition-opacity ${autoPreviewActive ? 'opacity-100' : ''}`} />
+                    
+                    <div className={`relative z-10 transition-transform duration-1000 ${autoPreviewActive ? 'animate-[spin_4s_linear_infinite]' : ''}`}>
+                      {autoPreviewActive ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-8 md:h-8">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-8 md:h-8">
+                          <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                      )}
+                    </div>
+                  </button>
+                  <span className={`text-[7px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] transition-opacity duration-500 ${autoPreviewActive ? 'text-[#1ce783]' : 'text-white/40'}`}>
+                    {autoPreviewActive ? 'Active' : 'Trailer'}
+                  </span>
+                </div>
+              )}
             </>
           )}
         </div>
       )}
 
-      {/* Details Section */}
       <div className="max-w-7xl mx-auto px-4 md:px-16 py-8 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
           <div className="lg:col-span-2 space-y-8 md:space-y-12">
@@ -311,15 +264,11 @@ const Details: React.FC = () => {
                 <span className="text-gray-400 font-bold text-xs md:text-base">{releaseYear}</span>
                 <div className="flex gap-2">
                   {media?.genres?.slice(0, 3).map(g => (
-                    <span key={g.id} className="text-[#1ce783]/60 text-[8px] md:text-[10px] font-black uppercase tracking-tighter bg-white/5 px-2 py-0.5 rounded-sm">
-                      {g.name}
-                    </span>
+                    <span key={g.id} className="text-[#1ce783]/60 text-[8px] md:text-[10px] font-black uppercase tracking-tighter bg-white/5 px-2 py-0.5 rounded-sm">{g.name}</span>
                   ))}
                 </div>
               </div>
-              <p className="text-gray-200 text-sm md:text-lg leading-relaxed">
-                {media?.overview}
-              </p>
+              <p className="text-gray-200 text-sm md:text-lg leading-relaxed">{media?.overview}</p>
             </section>
 
             {type === 'tv' && media && (
@@ -329,45 +278,28 @@ const Details: React.FC = () => {
                   <div className="flex items-center gap-3 md:gap-4">
                     <span className="text-[8px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">Season</span>
                     <select 
-                      value={currentSeason} 
-                      onChange={(e) => changeSeason(Number(e.target.value))}
+                      value={currentSeason} onChange={(e) => changeSeason(Number(e.target.value))}
                       className="bg-black border border-white/20 rounded px-3 md:px-4 py-1 md:py-1.5 text-white text-[10px] md:text-xs font-black uppercase outline-none focus:border-[#1ce783] transition-colors cursor-pointer"
                     >
-                      {[...Array(media.number_of_seasons)].map((_, i) => (
-                        <option key={i} value={i + 1}> {i + 1}</option>
-                      ))}
+                      {[...Array(media.number_of_seasons)].map((_, i) => (<option key={i} value={i + 1}>Season {i + 1}</option>))}
                     </select>
                   </div>
                 </div>
-
                 <div className="flex flex-nowrap overflow-x-auto gap-3 md:gap-4 pb-4 custom-scrollbar scroll-smooth">
                   {episodes.map((ep) => (
                     <div 
-                      key={ep.id} 
-                      onClick={() => playMedia(ep.episode_number)}
-                      className={`min-w-[200px] md:min-w-[320px] max-w-[200px] md:max-w-[320px] flex flex-col gap-2 md:gap-3 p-2 md:p-3 rounded-sm transition-all cursor-pointer group shrink-0 ${currentEpisode === ep.episode_number && isPlaying ? 'bg-[#1ce783]/10 border border-[#1ce783]/40' : 'bg-white/5 hover:bg-white/10 border border-transparent'}`}
+                      key={ep.id} onClick={() => playMedia(ep.episode_number)}
+                      className={`min-w-[200px] md:min-w-[320px] max-w-[200px] md:max-w-[320px] flex flex-col gap-2 md:gap-3 p-2 md:p-3 rounded-2xl transition-all cursor-pointer group shrink-0 ${currentEpisode === ep.episode_number && isPlaying ? 'bg-[#1ce783]/10 border border-[#1ce783]/40' : 'bg-white/5 hover:bg-white/10 border border-white/5'}`}
                     >
-                      <div className="w-full aspect-video relative rounded-sm overflow-hidden bg-black/40">
-                        <img 
-                          src={ep.still_path ? `${IMG_URL}${ep.still_path}` : 'https://via.placeholder.com/400x225/111/444?text=Preview'} 
-                          alt={ep.name}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
-                          <div className="w-8 h-8 rounded-full bg-[#1ce783] flex items-center justify-center text-black">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M4.5 3a.5.5 0 00-.5.5v13a.5.5 0 00.757.429l11-6.5a.5.5 0 000-.858l-11-6.5A.5.5 0 004.5 3z" />
-                              </svg>
-                          </div>
-                        </div>
+                      <div className="w-full aspect-video relative rounded-xl overflow-hidden bg-black/40">
+                        <img src={ep.still_path ? `${IMG_URL}${ep.still_path}` : 'https://via.placeholder.com/400x225/111/444?text=Preview'} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
+                      <div className="px-1">
+                        <div className="flex items-center justify-between mb-1">
                           <h4 className="text-[10px] md:text-xs font-black text-white uppercase tracking-tight truncate">{ep.name}</h4>
-                          <span className="text-[8px] md:text-[10px] text-[#1ce783] font-bold">E{ep.episode_number}</span>
+                          <span className="text-[8px] md:text-[10px] text-[#1ce783] font-black">EP {ep.episode_number}</span>
                         </div>
-                        <p className="text-[9px] md:text-[10px] text-gray-500 line-clamp-2 leading-relaxed">{ep.overview || "No description available for this episode."}</p>
+                        <p className="text-[9px] md:text-[10px] text-gray-500 line-clamp-2 leading-relaxed">{ep.overview || "No description available."}</p>
                       </div>
                     </div>
                   ))}
@@ -375,56 +307,34 @@ const Details: React.FC = () => {
               </section>
             )}
 
-            <section>
-              <CommentSection 
-                mediaId={media?.id || 0} 
-                mediaType={type || 'movie'} 
-                mediaTitle={media?.title || media?.name}
-                currentEpisode={type === 'tv' ? currentEpisode : undefined}
-              />
-            </section>
-
+            <CommentSection mediaId={media?.id || 0} mediaType={type || 'movie'} mediaTitle={media?.title || media?.name} />
+            
             <section className="space-y-6 md:space-y-8 pt-12">
               <div className="border-b border-white/10 pb-3 md:pb-4">
-                  <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">More Like <span className="text-[#1ce783]">This</span></h2>
+                  <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">Recommended</h2>
               </div>
               {loadingSimilar ? (
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 md:gap-4">
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <div key={i} className="aspect-[2/3] bg-white/5 animate-pulse rounded-sm" />
-                    ))}
+                    {[1, 2, 3, 4, 5, 6].map(i => (<div key={i} className="aspect-[2/3] bg-white/5 animate-pulse rounded-2xl" />))}
                   </div>
               ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
-                    {similarMedia.slice(0, 12).map((item) => (
-                        <MediaCard key={item.id} media={item} />
-                    ))}
+                    {similarMedia.slice(0, 12).map((item) => (<MediaCard key={item.id} media={item} />))}
                   </div>
               )}
             </section>
           </div>
 
           <div className="lg:col-span-1 space-y-8 md:space-y-10">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 space-y-6">
+            <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 space-y-8 backdrop-blur-xl">
                 <div>
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Original Language</p>
-                  <p className="text-white font-black uppercase italic">{media?.original_language === 'en' ? 'English' : media?.original_language}</p>
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] mb-3">Original Language</p>
+                  <p className="text-white font-black uppercase italic text-lg">{media?.original_language === 'en' ? 'English' : media?.original_language}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Popularity Score</p>
-                  <div className="flex items-center gap-2">
-                      <span className="text-white font-black text-xl italic">{media?.popularity.toFixed(0)}</span>
-                      <span className="text-[#1ce783] text-[10px] font-black uppercase tracking-tighter">Trending</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Genres</p>
-                  <div className="flex flex-wrap gap-2">
-                      {media?.genres?.map(g => (
-                        <span key={g.id} className="bg-white/5 border border-white/10 px-2 py-1 rounded text-[8px] font-black uppercase text-gray-300">
-                          {g.name}
-                        </span>
-                      ))}
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] mb-3">Popularity Index</p>
+                  <div className="flex items-center gap-3">
+                      <span className="text-[#1ce783] font-black text-3xl italic">{media?.popularity.toFixed(0)}</span>
                   </div>
                 </div>
             </div>

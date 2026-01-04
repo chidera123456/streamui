@@ -1,16 +1,16 @@
-// ZenStream Service Worker v2.2
-const CACHE_NAME = 'zenstream-cache-v4';
+
+// ZenStream Service Worker v2.5
+const CACHE_NAME = 'zenstream-v5';
 const ASSETS_TO_CACHE = [
-  './',
-  'index.html',
-  'manifest.json'
+  '/',
+  '/index.html',
+  '/manifest.json'
 ];
 
 // Install: Cache essential app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('ZenStream: Caching Shell');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
@@ -24,7 +24,6 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((name) => {
           if (name !== CACHE_NAME) {
-            console.log('ZenStream: Clearing Old Cache', name);
             return caches.delete(name);
           }
         })
@@ -34,23 +33,23 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Fetch: Optimized for SPA Navigation
+// Fetch: Optimized for SPA Navigation and PWA standalone mode
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // If this is a navigation request, try the network but fall back to index.html
+  // For navigation requests (opening the app), try network first, fallback to cached index.html
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
-        return caches.match('index.html') || caches.match('./');
+        return caches.match('/index.html') || caches.match('/');
       })
     );
     return;
   }
 
-  // For other assets, use a cache-first or network-first strategy
+  // Generic asset caching (Cache First, falling back to Network)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -58,18 +57,20 @@ self.addEventListener('fetch', (event) => {
       }
 
       return fetch(event.request).then((networkResponse) => {
-        // Cache successful responses for future use
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+        // Cache successful TMDB image responses or local assets
+        if (networkResponse && networkResponse.status === 200) {
+          const isImage = url.hostname.includes('tmdb.org');
+          const isLocal = url.origin === self.location.origin;
+          
+          if (isImage || isLocal) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
         }
         return networkResponse;
-      }).catch(() => {
-        // If everything fails, return null or a placeholder
-        return null;
-      });
+      }).catch(() => null);
     })
   );
 });
