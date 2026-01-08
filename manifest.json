@@ -1,14 +1,17 @@
 
 {
-  "name": "ZenStream - Cinematic Discovery",
+  "name": "ZenStream Cinematic Discovery",
   "short_name": "ZenStream",
   "description": "Explore millions of movies and series with ZenStream. Pure cinematic discovery.",
+  "id": "zenstream-app-v1",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#040404",
   "theme_color": "#1ce783",
+  "categories": ["entertainment", "movies", "tv"],
   "icons": [
     {
       "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Ccircle cx='256' cy='256' r='256' fill='%231ce783'/%3E%3Cpath d='M192 128l192 128-192 128z' fill='white'/%3E%3C/svg%3E",

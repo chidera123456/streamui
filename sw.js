@@ -1,17 +1,19 @@
 
-// ZenStream Service Worker v2.6
-const CACHE_NAME = 'zenstream-v6';
+// ZenStream Service Worker v3.0
+const CACHE_NAME = 'zenstream-shell-v1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  'https://cdn.tailwindcss.com',
+  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Use addAll but catch errors to ensure installation completes even if one asset fails
-      return cache.addAll(ASSETS_TO_CACHE).catch(err => console.warn('Pre-cache warning:', err));
+      console.log('ZenStream: Pre-caching app shell');
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
   self.skipWaiting();
@@ -23,6 +25,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((name) => {
           if (name !== CACHE_NAME) {
+            console.log('ZenStream: Clearing old cache', name);
             return caches.delete(name);
           }
         })
@@ -33,31 +36,28 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // Handle navigation requests
+  // For navigation requests, always serve the index.html (SPA logic)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
-        return caches.match('./index.html') || caches.match('./');
+        return caches.match('./index.html');
       })
     );
     return;
   }
 
-  // Cache First strategy for images and local assets
+  // Stale-while-revalidate for everything else
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
-
-      return fetch(event.request).then((networkResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Only cache successful local or image responses
         if (networkResponse && networkResponse.status === 200) {
-          const isImage = url.hostname.includes('tmdb.org');
-          const isLocal = url.origin === self.location.origin;
-          
-          if (isImage || isLocal) {
+          if (url.origin === self.location.origin || url.hostname.includes('tmdb.org')) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);
@@ -66,6 +66,8 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => null);
+
+      return cachedResponse || fetchPromise;
     })
   );
 });

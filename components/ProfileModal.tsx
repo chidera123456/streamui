@@ -76,6 +76,9 @@ const ProfileModal: React.FC = () => {
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
       }
+    } else {
+      // Basic instructions for iOS if the prompt isn't supported
+      alert("To install on iOS: Tap the 'Share' icon in Safari and select 'Add to Home Screen'.");
     }
   };
 
@@ -128,7 +131,7 @@ const ProfileModal: React.FC = () => {
               {!isEditing ? (
                 <>
                   <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-black italic uppercase tracking-tighter mb-1">
+                    <h1 className="text-3xl font-black italic uppercase tracking-tighter mb-1 text-white">
                       {username}
                     </h1>
                     <button 
@@ -181,17 +184,16 @@ const ProfileModal: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              {deferredPrompt && (
-                <button 
-                  onClick={handleInstall}
-                  className="bg-[#1ce783] text-black px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-lg shadow-[#1ce783]/20"
-                >
-                  Install App
-                </button>
-              )}
+              <button 
+                onClick={handleInstall}
+                className="bg-[#1ce783] text-black px-5 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-lg shadow-[#1ce783]/20 flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                Install App
+              </button>
               <button 
                 onClick={handleLogout}
-                className="bg-white/5 hover:bg-red-600/10 border border-white/10 hover:border-red-600/50 text-gray-400 hover:text-red-500 px-6 py-2 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-xs"
+                className="bg-white/5 hover:bg-red-600/10 border border-white/10 hover:border-red-600/50 text-gray-400 hover:text-red-500 px-6 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-xs"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
