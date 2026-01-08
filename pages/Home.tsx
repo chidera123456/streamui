@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchTrending, fetchAnime, fetchGenres } from '../services/tmdbService';
+import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent } from '../services/tmdbService';
 import { Movie } from '../types';
 import { BACKDROP_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
@@ -10,6 +10,7 @@ const Home: React.FC = () => {
   const [trending, setTrending] = useState<Movie[]>([]);
   const [tvTrending, setTvTrending] = useState<Movie[]>([]);
   const [anime, setAnime] = useState<Movie[]>([]);
+  const [netflix, setNetflix] = useState<Movie[]>([]);
   const [hero, setHero] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
   const [genreMap, setGenreMap] = useState<Record<number, string>>({});
@@ -17,16 +18,14 @@ const Home: React.FC = () => {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [moviesRes, tvRes, animeRes, movieGenres, tvGenres] = await Promise.all([
+        const [moviesRes, tvRes, animeRes, netflixRes, movieGenres, tvGenres] = await Promise.all([
           fetchTrending('movie', 1),
           fetchTrending('tv', 1),
           fetchAnime(1),
+          fetchNetflixContent(1),
           fetchGenres('movie'),
           fetchGenres('tv')
-        ]).catch(err => {
-          console.error("Critical fetch error in Home:", err.message || err);
-          return [[], [], [], [], []] as any;
-        });
+        ]);
         
         const gMap: Record<number, string> = {};
         if (movieGenres && tvGenres) {
@@ -37,13 +36,14 @@ const Home: React.FC = () => {
         if (moviesRes?.results) setTrending(moviesRes.results);
         if (tvRes?.results) setTvTrending(tvRes.results);
         if (animeRes?.results) setAnime(animeRes.results);
+        if (netflixRes?.results) setNetflix(netflixRes.results);
         
         if (moviesRes?.results?.length > 0) {
           const randomIndex = Math.floor(Math.random() * Math.min(5, moviesRes.results.length));
           setHero(moviesRes.results[randomIndex]);
         }
       } catch (err: any) {
-        console.error("Home initialization failed:", err.message || err);
+        console.error("Home initialization failed:", err);
       } finally {
         setLoading(false);
       }
@@ -52,16 +52,40 @@ const Home: React.FC = () => {
   }, []);
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#040404]">
-      <div className="w-10 h-10 border-2 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
+    <div className="min-h-screen bg-[#040404] pb-20 overflow-hidden">
+      {/* Hero Skeleton */}
+      <div className="h-[50vh] md:h-[85vh] w-full skeleton relative">
+        <div className="absolute bottom-0 left-0 p-4 md:p-16 space-y-4 w-full">
+           <div className="w-24 h-4 bg-white/5 rounded-full mb-2"></div>
+           <div className="w-1/2 h-12 md:h-20 bg-white/5 rounded-sm"></div>
+           <div className="w-2/3 h-4 bg-white/5 rounded-full"></div>
+           <div className="w-1/3 h-4 bg-white/5 rounded-full"></div>
+           <div className="flex gap-4 pt-4">
+             <div className="w-32 h-12 bg-white/5 rounded-sm"></div>
+             <div className="w-32 h-12 bg-white/5 rounded-sm"></div>
+           </div>
+        </div>
+      </div>
+      {/* Rows Skeletons */}
+      <div className="px-4 md:px-16 mt-12 space-y-16">
+        {[1, 2].map(row => (
+          <div key={row} className="space-y-6">
+            <div className="w-48 h-8 bg-white/5 rounded-sm"></div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                <div key={i} className="aspect-[2/3] bg-white/5 rounded-sm skeleton"></div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 
   return (
     <div className="pb-20">
-      {/* Hero Section */}
       {hero && (
-        <section className="relative h-[50vh] md:h-[85vh] w-full overflow-hidden">
+        <section className="relative h-[60vh] md:h-[85vh] w-full overflow-hidden">
           <div className="absolute inset-0">
             <img 
               src={`${BACKDROP_URL}${hero.backdrop_path}`}
@@ -108,7 +132,6 @@ const Home: React.FC = () => {
         </section>
       )}
 
-      {/* Rows */}
       <div className="space-y-10 md:space-y-16 mt-6 md:mt-12 px-4 md:px-16">
         <section>
           <div className="flex items-center justify-between mb-4 md:mb-8">
@@ -122,6 +145,23 @@ const Home: React.FC = () => {
             ))}
           </div>
         </section>
+
+        {netflix.length > 0 && (
+          <section className="relative overflow-hidden">
+            <div className="flex items-center justify-between mb-4 md:mb-8">
+              <h2 className="text-base md:text-3xl font-black uppercase italic tracking-tighter border-l-4 border-red-600 pl-3 md:pl-4">
+                Popular on <span className="text-red-600">Netflix</span>
+              </h2>
+            </div>
+            <div className="flex gap-2 md:gap-4 overflow-x-auto hide-scrollbar pb-6 snap-x snap-mandatory">
+              {netflix.map(item => (
+                <div key={item.id} className="min-w-[120px] sm:min-w-[150px] md:min-w-[200px] lg:min-w-[220px] snap-start">
+                  <MediaCard media={item} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section>
           <div className="flex items-center justify-between mb-4 md:mb-8">

@@ -46,6 +46,28 @@ export const fetchTrending = async (type: 'movie' | 'tv' | 'all' = 'movie', page
 };
 
 /**
+ * Specifically fetches popular movies and series on Netflix
+ */
+export const fetchNetflixContent = async (page: number = 1): Promise<{ results: Movie[] }> => {
+  const cacheKey = `netflix-content-${page}`;
+  const cached = getFromCache(cacheKey);
+  if (cached) return { results: cached.results.map((m: any) => ({ ...m, media_type: m.media_type || 'movie' })) };
+
+  try {
+    // Provider ID 8 is Netflix. We use discover to find popular titles from this provider.
+    const url = `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_watch_providers=8&watch_region=US&sort_by=popularity.desc&page=${page}`;
+    const response = await fetch(url);
+    const data = await handleResponse(response, cacheKey);
+    return {
+      results: (data.results || []).map((m: any) => ({ ...m, media_type: 'movie' }))
+    };
+  } catch (err) {
+    console.error("fetchNetflixContent failed", err);
+    return { results: [] };
+  }
+};
+
+/**
  * Specifically fetches movies slated for 2026 release
  */
 export const fetchUpcomingMovies = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {

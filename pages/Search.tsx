@@ -91,7 +91,6 @@ const Search: React.FC = () => {
         res = await searchMedia(searchQuery, type, pageNum, selectedYear);
         
         if (!isSilent && pageNum === 1) {
-          // AUTO-CORRECTION LOGIC
           if (res.results.length === 0 && searchQuery.length > 2) {
             setIsCorrecting(true);
             const aiCorrected = await getCorrectedQuery(searchQuery);
@@ -282,20 +281,8 @@ const Search: React.FC = () => {
                               {s.media_type} • {(s.release_date || s.first_air_date || '').substring(0, 4)}
                             </p>
                           </div>
-                          <div className="text-[#1ce783] opacity-0 group-hover:opacity-100 transition-opacity pr-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </div>
                         </Link>
                       ))}
-                      <button 
-                        type="button"
-                        onClick={() => triggerSearch(1)}
-                        className="w-full p-3 text-center bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest text-[#1ce783] transition-colors"
-                      >
-                        View All Results
-                      </button>
                     </div>
                   )}
                 </div>
@@ -316,7 +303,7 @@ const Search: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading || isCorrecting}
-                className="flex-1 md:flex-none bg-white hover:bg-[#1ce783] text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-base uppercase tracking-widest transition-all"
+                className="flex-1 md:flex-none bg-white hover:bg-[#1ce783] text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-base uppercase tracking-widest transition-all shadow-xl"
               >
                 {loading || isCorrecting ? '...' : 'Search'}
               </button>
@@ -325,7 +312,7 @@ const Search: React.FC = () => {
         </form>
 
         {showFilters && (
-          <div className="bg-[#0c0c0c] border border-white/5 rounded-sm p-5 md:p-8 space-y-6 md:space-y-8">
+          <div className="bg-[#0c0c0c] border border-white/5 rounded-sm p-5 md:p-8 space-y-6 md:space-y-8 animate-in slide-in-from-top-4 duration-300">
             <div className="flex items-center justify-between">
               <h3 className="text-[8px] md:text-[10px] font-black uppercase text-[#1ce783] tracking-widest">Advanced Filters</h3>
               <button onClick={clearFilters} className="text-[8px] md:text-[10px] font-black uppercase text-gray-500 hover:text-white transition-colors">Reset</button>
@@ -384,11 +371,13 @@ const Search: React.FC = () => {
         )}
       </div>
 
-      {correctedQuery && results.length > 0 && (
-        <div className="max-w-3xl mx-auto mb-6 p-3 bg-[#1ce783]/5 border border-[#1ce783]/10 rounded-lg animate-in fade-in slide-in-from-top-1">
-          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-            Showing results for <span className="text-[#1ce783] italic">"{correctedQuery}"</span> instead of "{query}"
-          </p>
+      {loading && results.length === 0 && (
+        <div className="space-y-12">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(i => (
+              <div key={i} className="aspect-[2/3] bg-white/5 rounded-sm skeleton"></div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -414,14 +403,7 @@ const Search: React.FC = () => {
         </div>
       )}
 
-      {loading && results.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-32 space-y-4">
-          <div className="w-12 h-12 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-gray-500 animate-pulse">Syncing Galaxy...</p>
-        </div>
-      )}
-
-      {!loading && !isCorrecting && results.length === 0 && query.length > 0 && (
+      {!loading && results.length === 0 && query.length > 0 && !isCorrecting && (
         <div className="text-center py-32 space-y-4">
           <div className="text-4xl">🛸</div>
           <h2 className="text-xl font-black uppercase italic tracking-tighter">No signal detected</h2>

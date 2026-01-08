@@ -81,14 +81,22 @@
     .logo-pulse {
       animation: logoPulse 3s infinite;
     }
+
+    @keyframes shimmer {
+      0% { background-position: -1000px 0; }
+      100% { background-position: 1000px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, #0d0d0d 25%, #1a1a1a 50%, #0d0d0d 75%);
+      background-size: 1000px 100%;
+      animation: shimmer 2s infinite linear;
+    }
     
     .zen-gradient-text {
       background: linear-gradient(to right, #1ce783, #00ed82, #60fe9d);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    
-    img { content-visibility: auto; }
   </style>
 <script type="importmap">
 {
