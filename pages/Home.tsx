@@ -12,6 +12,7 @@ const Home: React.FC = () => {
   const [anime, setAnime] = useState<Movie[]>([]);
   const [netflix, setNetflix] = useState<Movie[]>([]);
   const [hero, setHero] = useState<Movie | null>(null);
+  const [spotlight, setSpotlight] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
   const [genreMap, setGenreMap] = useState<Record<number, string>>({});
   
@@ -34,7 +35,13 @@ const Home: React.FC = () => {
         setGenreMap(gMap);
 
         if (moviesRes?.results) setTrending(moviesRes.results);
-        if (tvRes?.results) setTvTrending(tvRes.results);
+        if (tvRes?.results) {
+          setTvTrending(tvRes.results);
+          // Set a random spotlight series from trending TV
+          if (tvRes.results.length > 5) {
+            setSpotlight(tvRes.results[Math.floor(Math.random() * 5) + 5]);
+          }
+        }
         if (animeRes?.results) setAnime(animeRes.results);
         if (netflixRes?.results) setNetflix(netflixRes.results);
         
@@ -53,20 +60,16 @@ const Home: React.FC = () => {
 
   if (loading) return (
     <div className="min-h-screen bg-[#040404] pb-20 overflow-hidden">
-      {/* Hero Skeleton */}
       <div className="h-[50vh] md:h-[85vh] w-full skeleton relative">
         <div className="absolute bottom-0 left-0 p-4 md:p-16 space-y-4 w-full">
            <div className="w-24 h-4 bg-white/5 rounded-full mb-2"></div>
            <div className="w-1/2 h-12 md:h-20 bg-white/5 rounded-sm"></div>
            <div className="w-2/3 h-4 bg-white/5 rounded-full"></div>
-           <div className="w-1/3 h-4 bg-white/5 rounded-full"></div>
            <div className="flex gap-4 pt-4">
-             <div className="w-32 h-12 bg-white/5 rounded-sm"></div>
              <div className="w-32 h-12 bg-white/5 rounded-sm"></div>
            </div>
         </div>
       </div>
-      {/* Rows Skeletons */}
       <div className="px-4 md:px-16 mt-12 space-y-16">
         {[1, 2].map(row => (
           <div key={row} className="space-y-6">
@@ -132,7 +135,7 @@ const Home: React.FC = () => {
         </section>
       )}
 
-      <div className="space-y-10 md:space-y-16 mt-6 md:mt-12 px-4 md:px-16">
+      <div className="space-y-12 md:space-y-20 mt-6 md:mt-12 px-4 md:px-16">
         <section>
           <div className="flex items-center justify-between mb-4 md:mb-8">
             <h2 className="text-base md:text-3xl font-black uppercase italic tracking-tighter border-l-4 border-[#1ce783] pl-3 md:pl-4">
@@ -145,6 +148,31 @@ const Home: React.FC = () => {
             ))}
           </div>
         </section>
+
+        {/* New Spotlight Banner */}
+        {spotlight && (
+          <section className="relative h-[40vh] md:h-[50vh] w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+            <img 
+              src={`${BACKDROP_URL}${spotlight.backdrop_path}`}
+              className="absolute inset-0 w-full h-full object-cover"
+              alt=""
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
+            <div className="absolute inset-0 flex items-center p-6 md:p-12">
+              <div className="max-w-lg space-y-4">
+                <span className="bg-amber-500 text-black px-3 py-1 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded-sm">Series Spotlight</span>
+                <h3 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">{spotlight.name}</h3>
+                <p className="text-gray-300 text-xs md:text-sm line-clamp-2 md:line-clamp-3 font-medium leading-relaxed opacity-80">{spotlight.overview}</p>
+                <Link 
+                  to={`/details/tv/${spotlight.id}`}
+                  className="inline-block bg-white text-black px-6 md:px-8 py-2 md:py-3 rounded-sm font-black text-[10px] md:text-xs uppercase tracking-widest hover:bg-[#1ce783] transition-all"
+                >
+                  View Collection
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
 
         {netflix.length > 0 && (
           <section className="relative overflow-hidden">
@@ -162,6 +190,32 @@ const Home: React.FC = () => {
             </div>
           </section>
         )}
+
+        {/* AI Discovery CTA Banner */}
+        <section className="relative py-12 md:py-20 rounded-3xl overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#1ce783]/20 via-[#1ce783]/10 to-cyan-500/20 blur-3xl group-hover:opacity-100 opacity-50 transition-opacity duration-1000" />
+          <div className="relative z-10 text-center max-w-3xl mx-auto space-y-6 px-6">
+            <div className="w-12 h-12 md:w-16 md:h-16 mx-auto bg-gradient-to-tr from-[#1ce783] to-cyan-500 rounded-full flex items-center justify-center animate-pulse mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 md:h-8 md:w-8 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h2 className="text-3xl md:text-6xl font-black uppercase italic tracking-tighter leading-none">
+              Not sure <span className="text-[#1ce783]">what to watch?</span>
+            </h2>
+            <p className="text-gray-400 font-bold text-xs md:text-base uppercase tracking-widest leading-relaxed">
+              Our AI engine understands your mood. Describe the vibe, we handle the discovery.
+            </p>
+            <div className="pt-4">
+              <Link 
+                to="/search" 
+                className="bg-white text-black px-10 md:px-14 py-3 md:py-5 rounded-full font-black text-xs md:text-sm uppercase tracking-[0.2em] hover:scale-105 transition-transform inline-block shadow-2xl shadow-[#1ce783]/20"
+              >
+                Manifest Now
+              </Link>
+            </div>
+          </div>
+        </section>
 
         <section>
           <div className="flex items-center justify-between mb-4 md:mb-8">

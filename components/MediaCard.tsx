@@ -12,7 +12,6 @@ interface Props {
 
 const SMALL_POSTER_URL = 'https://image.tmdb.org/t/p/w342';
 
-// Global lock to prevent overlapping share attempts across all components
 let isGlobalSharing = false;
 
 const MediaCard: React.FC<Props> = memo(({ media }) => {
@@ -23,6 +22,10 @@ const MediaCard: React.FC<Props> = memo(({ media }) => {
   const [shared, setShared] = useState(false);
   const [isLocalSharing, setIsLocalSharing] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const triggerHaptic = (ms = 10) => {
+    if ('vibrate' in navigator) navigator.vibrate(ms);
+  };
 
   const title = media.title || media.name;
   const year = (media.release_date || media.first_air_date || '').substring(0, 4);
@@ -57,12 +60,14 @@ const MediaCard: React.FC<Props> = memo(({ media }) => {
   const handleWatchlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    triggerHaptic(20);
     toggleWatchlist(media);
   };
 
   const handleAddToHistory = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    triggerHaptic(15);
     addToHistory(media);
     setAddedToHistory(true);
     setTimeout(() => setAddedToHistory(false), 2000);
@@ -71,8 +76,8 @@ const MediaCard: React.FC<Props> = memo(({ media }) => {
   const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    triggerHaptic(10);
     
-    // Check both local and global lock
     if (isLocalSharing || isGlobalSharing) return;
 
     const shareUrl = `${window.location.origin}/#/details/${media.media_type}/${media.id}`;
@@ -98,9 +103,7 @@ const MediaCard: React.FC<Props> = memo(({ media }) => {
       try {
         await navigator.share(shareData);
       } catch (err) {
-        // If the error is 'AbortError', the user simply cancelled. 
         if ((err as Error).name !== 'AbortError') {
-          console.warn('Native share failed or busy, falling back to clipboard:', err);
           await copyToClipboardFallback();
         }
       } finally {
@@ -120,7 +123,7 @@ const MediaCard: React.FC<Props> = memo(({ media }) => {
       {!isVisible ? (
         <div className="aspect-[2/3] w-full skeleton" />
       ) : (
-        <Link to={`/details/${media.media_type}/${media.id}`}>
+        <Link to={`/details/${media.media_type}/${media.id}`} onClick={() => triggerHaptic(5)}>
           <div className="aspect-[2/3] overflow-hidden relative">
             <img 
               src={poster} 
