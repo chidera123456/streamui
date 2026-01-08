@@ -9,12 +9,6 @@ const Navbar: React.FC = () => {
   
   const isActive = (path: string) => location.pathname === path;
 
-  const handleNavClick = () => {
-    if ('vibrate' in navigator) {
-      navigator.vibrate(5); // Light tap vibe
-    }
-  };
-
   const rawUsername = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
   const username = String(rawUsername);
   const initial = username.length > 0 ? username.charAt(0) : 'U';
@@ -65,7 +59,7 @@ const Navbar: React.FC = () => {
   return (
     <nav className="fixed bottom-0 md:top-0 md:bottom-auto left-0 right-0 h-20 md:h-16 bg-[#040404]/90 backdrop-blur-2xl border-t md:border-t-0 md:border-b border-white/10 z-[100] px-4 md:px-8 flex items-center justify-between shadow-[0_-10px_30px_rgba(0,0,0,0.5)] md:shadow-none">
       {/* Logo - Hidden on Mobile */}
-      <Link to="/" onClick={handleNavClick} className="hidden md:flex items-center gap-2 group shrink-0">
+      <Link to="/" className="hidden md:flex items-center gap-2 group shrink-0">
         <div className="w-8 h-8 rounded-full bg-[#1ce783] flex items-center justify-center transition-transform duration-500 group-hover:scale-110 shadow-lg shadow-[#1ce783]/20">
           <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4 ml-0.5">
             <path d="M8 5v14l11-7z" />
@@ -82,7 +76,6 @@ const Navbar: React.FC = () => {
           <Link 
             key={link.path}
             to={link.path} 
-            onClick={handleNavClick}
             className={`transition-all duration-300 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 ${isActive(link.path) ? link.activeClass : 'text-gray-500 hover:text-white'}`}
           >
             <span className="transform active:scale-90 transition-transform">
@@ -98,7 +91,7 @@ const Navbar: React.FC = () => {
         <div className="flex md:hidden items-center justify-center">
           {user ? (
             <button 
-              onClick={() => { handleNavClick(); openProfileModal(); }}
+              onClick={openProfileModal}
               className="flex flex-col items-center justify-center gap-1 group"
             >
               <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-[10px] font-black uppercase text-black ring-2 ring-white/10 group-active:scale-90 transition-transform">
@@ -108,7 +101,7 @@ const Navbar: React.FC = () => {
             </button>
           ) : (
             <button 
-              onClick={() => { handleNavClick(); openAuthModal(); }}
+              onClick={openAuthModal}
               className="flex flex-col items-center justify-center gap-1 group text-gray-500 hover:text-[#1ce783]"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-active:scale-90 transition-transform"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -122,7 +115,7 @@ const Navbar: React.FC = () => {
       <div className="hidden md:flex items-center shrink-0">
         {user ? (
           <button 
-            onClick={() => { handleNavClick(); openProfileModal(); }}
+            onClick={openProfileModal}
             className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition-all"
           >
             <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-xs font-black uppercase text-black">
@@ -132,7 +125,7 @@ const Navbar: React.FC = () => {
           </button>
         ) : (
           <button 
-            onClick={() => { handleNavClick(); openAuthModal(); }}
+            onClick={openAuthModal}
             className="bg-white text-black hover:bg-[#1ce783] px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-[#1ce783]/10"
           >
             Log In

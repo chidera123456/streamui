@@ -11,13 +11,14 @@ const Anime: React.FC = () => {
   const [trending, setTrending] = useState<Movie[]>([]);
   const [action, setAction] = useState<Movie[]>([]);
   const [fantasy, setFantasy] = useState<Movie[]>([]);
-  const [classicSpotlight, setClassicSpotlight] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadAnimeData = async () => {
       try {
         setLoading(true);
+        // Action & Adventure (TV) = 10759
+        // Sci-Fi & Fantasy (TV) = 10765
         const [trendRes, actionRes, fantasyRes] = await Promise.all([
           fetchAnime(1),
           fetchAnime(1, 10759),
@@ -34,11 +35,6 @@ const Anime: React.FC = () => {
             ? validHeroes[Math.floor(Math.random() * Math.min(3, validHeroes.length))]
             : trendRes.results[0];
           setHero(top);
-          
-          // Set a classic spotlight (picking one from later in the results for variety)
-          if (trendRes.results.length > 10) {
-            setClassicSpotlight(trendRes.results[Math.floor(Math.random() * 5) + 10]);
-          }
         }
       } catch (err) {
         console.error("Anime page data load failed:", err);
@@ -58,6 +54,7 @@ const Anime: React.FC = () => {
 
   return (
     <div className="pb-20 bg-[#040404]">
+      {/* Anime Hero Banner */}
       {hero && (
         <section className="relative h-[50vh] md:h-[85vh] w-full overflow-hidden">
           <div className="absolute inset-0">
@@ -90,11 +87,18 @@ const Anime: React.FC = () => {
               >
                 Watch
               </Link>
+              <Link 
+                to={`/details/tv/${hero.id}`}
+                className="bg-white/5 backdrop-blur-md text-white px-5 md:px-10 py-2.5 md:py-4 rounded-sm font-black text-[10px] md:text-base uppercase tracking-widest border border-white/10 hover:bg-white/10 transition-all"
+              >
+                Details
+              </Link>
             </div>
           </div>
         </section>
       )}
 
+      {/* Anime Hub Sections */}
       <div className="px-4 md:px-16 mt-8 md:mt-12 space-y-16 md:space-y-24">
         <section>
           <div className="flex items-end justify-between mb-6 md:mb-10 border-b border-white/5 pb-4 md:pb-6">
@@ -111,31 +115,6 @@ const Anime: React.FC = () => {
             ))}
           </div>
         </section>
-
-        {/* Anime Classic Spotlight Banner */}
-        {classicSpotlight && (
-          <section className="relative h-[30vh] md:h-[45vh] w-full rounded-2xl overflow-hidden border border-white/10 group">
-            <img 
-              src={`${BACKDROP_URL}${classicSpotlight.backdrop_path}`}
-              className="absolute inset-0 w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-1000"
-              alt=""
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-            <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-12 space-y-3">
-              <span className="text-cyan-500 text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em]">Timeless Classic</span>
-              <h3 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">{classicSpotlight.name}</h3>
-              <p className="text-gray-400 text-xs md:text-sm font-medium leading-relaxed max-w-2xl line-clamp-2">{classicSpotlight.overview}</p>
-              <div className="pt-2">
-                <Link 
-                  to={`/details/tv/${classicSpotlight.id}`}
-                  className="bg-white text-black px-6 py-2 rounded-sm font-black text-[10px] md:text-xs uppercase tracking-widest hover:bg-cyan-500 transition-all"
-                >
-                  Rediscover
-                </Link>
-              </div>
-            </div>
-          </section>
-        )}
 
         <section>
           <div className="flex items-end justify-between mb-6 md:mb-10 border-b border-white/5 pb-4 md:pb-6">

@@ -1,60 +1,76 @@
 
-// ZenStream Service Worker v3.2
-const CACHE_NAME = 'zenstream-v6';
+// ZenStream Service Worker v2.5
+const CACHE_NAME = 'zenstream-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json',
-  'https://cdn.tailwindcss.com'
+  '/manifest.json'
 ];
 
+// Install: Cache essential app shell
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  self.skipWaiting();
 });
 
+// Activate: Clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
+        cacheNames.map((name) => {
+          if (name !== CACHE_NAME) {
+            return caches.delete(name);
+          }
         })
       );
     })
   );
-  self.clients.claim();
+  return self.clients.claim();
 });
 
+// Fetch: Optimized for SPA Navigation and PWA standalone mode
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
+  // For navigation requests (opening the app), try network first, fallback to cached index.html
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/index.html') || caches.match('/');
+      })
+    );
+    return;
+  }
+
+  // Generic asset caching (Cache First, falling back to Network)
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cache successful responses for future offline use
-        if (response.status === 200 && (url.origin === self.location.origin || url.hostname.includes('tmdb.org'))) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Offline fallback
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) return cachedResponse;
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      return fetch(event.request).then((networkResponse) => {
+        // Cache successful TMDB image responses or local assets
+        if (networkResponse && networkResponse.status === 200) {
+          const isImage = url.hostname.includes('tmdb.org');
+          const isLocal = url.origin === self.location.origin;
+          
+          if (isImage || isLocal) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
           }
-        });
-      })
+        }
+        return networkResponse;
+      }).catch(() => null);
+    })
   );
 });
