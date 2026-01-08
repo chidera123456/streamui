@@ -1,21 +1,20 @@
 
-// ZenStream Service Worker v3.1
-const CACHE_NAME = 'zenstream-v5';
+// ZenStream Service Worker v3.2
+const CACHE_NAME = 'zenstream-v6';
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './manifest.json',
+  '/',
+  '/index.html',
+  '/manifest.json',
   'https://cdn.tailwindcss.com'
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('ZenStream: Pre-caching core assets');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -23,9 +22,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
+          if (key !== CACHE_NAME) return caches.delete(key);
         })
       );
     })
@@ -36,30 +33,28 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+  const url = new URL(event.request.url);
 
-      return fetch(event.request).then((networkResponse) => {
-        // Cache navigation requests and local resources
-        if (networkResponse && networkResponse.status === 200) {
-          const url = new URL(event.request.url);
-          if (url.origin === self.location.origin || url.hostname.includes('tmdb.org')) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // Cache successful responses for future offline use
+        if (response.status === 200 && (url.origin === self.location.origin || url.hostname.includes('tmdb.org'))) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // Offline fallback
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html');
           }
-        }
-        return networkResponse;
-      }).catch(() => {
-        // Fallback for navigation if offline
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-      });
-    })
+        });
+      })
   );
 });

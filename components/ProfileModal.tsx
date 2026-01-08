@@ -17,33 +17,31 @@ const ProfileModal: React.FC = () => {
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
       setInstallStatus('ready');
-      console.log('ZenStream: Install prompt is ready to be triggered.');
     };
 
     const handleAppInstalled = () => {
       setInstallStatus('installed');
       setDeferredPrompt(null);
-      console.log('ZenStream: App was successfully installed.');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
     
-    // Check if app is already in standalone mode
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
       setInstallStatus('installed');
+    } else {
+      // Check if prompt was already captured
+      if (deferredPrompt) setInstallStatus('ready');
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, []);
+  }, [deferredPrompt]);
 
   useEffect(() => {
     if (user) {
@@ -55,10 +53,11 @@ const ProfileModal: React.FC = () => {
 
   const handleInstall = async () => {
     if (!deferredPrompt) {
-      // Logic for iOS where beforeinstallprompt isn't supported
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
       if (isIOS) {
-        alert("To install ZenStream on iOS:\n1. Tap the Share button (square with arrow)\n2. Scroll down and tap 'Add to Home Screen'");
+        alert("ZenStream Install (iOS):\n1. Tap the Share icon (bottom of screen)\n2. Select 'Add to Home Screen'\n3. Look for the Green Play icon on your screen.");
+      } else {
+        alert("To install ZenStream:\n1. Open your browser menu (⋮)\n2. Select 'Install App' or 'Add to Home Screen'.");
       }
       return;
     }
@@ -67,8 +66,6 @@ const ProfileModal: React.FC = () => {
     deferredPrompt.prompt();
     
     const { outcome } = await deferredPrompt.userChoice;
-    console.log(`ZenStream: Installation ${outcome}`);
-    
     if (outcome === 'accepted') {
       setInstallStatus('installed');
       setDeferredPrompt(null);
@@ -204,15 +201,20 @@ const ProfileModal: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              {installStatus !== 'installed' && (
+              {installStatus !== 'installed' ? (
                 <button 
                   onClick={handleInstall}
                   disabled={installStatus === 'installing'}
                   className="bg-[#1ce783] text-black px-5 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-lg shadow-[#1ce783]/20 flex items-center gap-2 disabled:opacity-50"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                  {installStatus === 'installing' ? 'Installing...' : 'Install App'}
+                  {installStatus === 'installing' ? 'Syncing...' : 'Install App'}
                 </button>
+              ) : (
+                <div className="px-5 py-2.5 rounded-xl border border-[#1ce783]/30 text-[#1ce783] font-black uppercase tracking-widest text-[10px] flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  Installed
+                </div>
               )}
               <button 
                 onClick={handleLogout}
@@ -235,8 +237,10 @@ const ProfileModal: React.FC = () => {
                   <span className="text-white font-black text-xs">{joinedDate}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500 text-[10px] font-bold uppercase">Status</span>
-                  <span className="text-[#1ce783] font-black text-[10px] uppercase tracking-widest italic">Zen Member</span>
+                  <span className="text-gray-500 text-[10px] font-bold uppercase">Device Status</span>
+                  <span className="text-[#1ce783] font-black text-[10px] uppercase tracking-widest italic">
+                    {installStatus === 'installed' ? 'Native Link Active' : 'Web Access'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -254,7 +258,9 @@ const ProfileModal: React.FC = () => {
                     {watchlist.length}
                   </Link>
                 </div>
-                <p className="text-[10px] text-gray-500 italic">Cloud synchronized identity.</p>
+                {installStatus !== 'installed' && (
+                  <p className="text-[9px] text-gray-500 italic">Install to access ZenStream directly from your home screen.</p>
+                )}
               </div>
             </div>
           </div>
