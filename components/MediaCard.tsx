@@ -12,11 +12,16 @@ interface Props {
 
 const SMALL_POSTER_URL = 'https://image.tmdb.org/t/p/w342';
 
+// Global lock to prevent overlapping share attempts across all components
+let isGlobalSharing = false;
+
 const MediaCard: React.FC<Props> = memo(({ media }) => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { addToHistory } = useHistory();
   const [isVisible, setIsVisible] = useState(false);
   const [addedToHistory, setAddedToHistory] = useState(false);
+  const [shared, setShared] = useState(false);
+  const [isLocalSharing, setIsLocalSharing] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const title = media.title || media.name;
@@ -28,7 +33,7 @@ const MediaCard: React.FC<Props> = memo(({ media }) => {
   const inList = isInWatchlist(media.id);
 
   useEffect(() => {
-    if (isVisible) return; // Already loaded, no need to observe again
+    if (isVisible) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -37,7 +42,7 @@ const MediaCard: React.FC<Props> = memo(({ media }) => {
         }
       },
       {
-        rootMargin: '600px', // Load well before it enters the viewport
+        rootMargin: '600px',
         threshold: 0.01
       }
     );
@@ -63,6 +68,50 @@ const MediaCard: React.FC<Props> = memo(({ media }) => {
     setTimeout(() => setAddedToHistory(false), 2000);
   };
 
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Check both local and global lock
+    if (isLocalSharing || isGlobalSharing) return;
+
+    const shareUrl = `${window.location.origin}/#/details/${media.media_type}/${media.id}`;
+    const shareData = {
+      title: title || 'ZenStream',
+      text: `Check out ${title} on ZenStream!`,
+      url: shareUrl,
+    };
+
+    const copyToClipboardFallback = async () => {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy link:', err);
+      }
+    };
+
+    if (navigator.share) {
+      setIsLocalSharing(true);
+      isGlobalSharing = true;
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        // If the error is 'AbortError', the user simply cancelled. 
+        if ((err as Error).name !== 'AbortError') {
+          console.warn('Native share failed or busy, falling back to clipboard:', err);
+          await copyToClipboardFallback();
+        }
+      } finally {
+        setIsLocalSharing(false);
+        isGlobalSharing = false;
+      }
+    } else {
+      await copyToClipboardFallback();
+    }
+  };
+
   return (
     <div 
       ref={cardRef}
@@ -83,20 +132,19 @@ const MediaCard: React.FC<Props> = memo(({ media }) => {
             
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
 
-            {/* Type Badge */}
             <div className="absolute top-1 md:top-2 right-1 md:right-2 flex flex-col items-end gap-1 z-10">
               <div className="bg-[#1ce783] text-black text-[6px] md:text-[7px] font-black px-1.5 md:px-2 py-0.5 rounded-sm uppercase tracking-widest">
                 {media.media_type === 'tv' ? 'Series' : 'Movie'}
               </div>
             </div>
             
-            {/* Action Buttons */}
             <div className="absolute top-1 md:top-2 left-1 md:left-2 flex flex-col gap-1.5 md:gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <button 
                 onClick={handleWatchlist}
                 className={`p-1 md:p-1.5 rounded-full backdrop-blur-xl border transition-all duration-300 ${
                   inList ? 'bg-[#1ce783] border-[#1ce783] text-black shadow-[0_0_15px_rgba(28,231,131,0.4)]' : 'bg-black/40 border-white/10 text-white hover:bg-white hover:text-black'
                 }`}
+                title="Add to Watchlist"
               >
                 {inList ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 md:h-3.5 md:w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>
@@ -109,8 +157,25 @@ const MediaCard: React.FC<Props> = memo(({ media }) => {
                 className={`p-1 md:p-1.5 rounded-full backdrop-blur-xl border transition-all duration-300 ${
                   addedToHistory ? 'bg-cyan-500 border-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'bg-black/40 border-white/10 text-white hover:bg-white hover:text-black'
                 }`}
+                title="Add to History"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 md:h-3.5 md:w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </button>
+              <button 
+                onClick={handleShare}
+                disabled={isLocalSharing}
+                className={`p-1 md:p-1.5 rounded-full backdrop-blur-xl border transition-all duration-300 ${
+                  shared ? 'bg-[#1ce783] border-[#1ce783] text-black shadow-[0_0_15px_rgba(28,231,131,0.4)]' : 'bg-black/40 border-white/10 text-white hover:bg-white hover:text-black'
+                } ${isLocalSharing ? 'opacity-50 cursor-wait' : ''}`}
+                title="Share"
+              >
+                {shared ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 md:h-3.5 md:w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                ) : isLocalSharing ? (
+                  <div className="h-3 w-3 md:h-3.5 md:w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 md:h-3.5 md:w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6L15.316 8.042m0 7.916a3 3 0 100-5.368 3 3 0 000 5.368zm0-7.916a3 3 0 100-5.368 3 3 0 000 5.368z" /></svg>
+                )}
               </button>
             </div>
 

@@ -1,23 +1,22 @@
 
-// ZenStream Service Worker v2.5
-const CACHE_NAME = 'zenstream-v5';
+// ZenStream Service Worker v2.6
+const CACHE_NAME = 'zenstream-v6';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json'
 ];
 
-// Install: Cache essential app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      // Use addAll but catch errors to ensure installation completes even if one asset fails
+      return cache.addAll(ASSETS_TO_CACHE).catch(err => console.warn('Pre-cache warning:', err));
     })
   );
   self.skipWaiting();
 });
 
-// Activate: Clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -33,31 +32,27 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Fetch: Optimized for SPA Navigation and PWA standalone mode
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // For navigation requests (opening the app), try network first, fallback to cached index.html
+  // Handle navigation requests
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
-        return caches.match('/index.html') || caches.match('/');
+        return caches.match('./index.html') || caches.match('./');
       })
     );
     return;
   }
 
-  // Generic asset caching (Cache First, falling back to Network)
+  // Cache First strategy for images and local assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+      if (cachedResponse) return cachedResponse;
 
       return fetch(event.request).then((networkResponse) => {
-        // Cache successful TMDB image responses or local assets
         if (networkResponse && networkResponse.status === 200) {
           const isImage = url.hostname.includes('tmdb.org');
           const isLocal = url.origin === self.location.origin;

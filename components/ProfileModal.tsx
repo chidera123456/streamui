@@ -16,11 +16,23 @@ const ProfileModal: React.FC = () => {
 
   useEffect(() => {
     const handler = (e: any) => {
+      console.log('ZenStream: Install prompt captured');
       e.preventDefault();
       setDeferredPrompt(e);
     };
+
+    const installedHandler = () => {
+      console.log('ZenStream: App installed successfully');
+      setDeferredPrompt(null);
+    };
+
     window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', installedHandler);
+    
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installedHandler);
+    };
   }, []);
 
   useEffect(() => {
@@ -60,6 +72,7 @@ const ProfileModal: React.FC = () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
+      console.log(`ZenStream: User installation choice: ${outcome}`);
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
       }
