@@ -8,6 +8,7 @@ const ProfileModal: React.FC = () => {
   const { user, isProfileModalOpen, closeProfileModal, logout, updateProfile } = useAuth();
   const { watchlist } = useWatchlist();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [installStatus, setInstallStatus] = useState<'ready' | 'installing' | 'installed' | 'hidden'>('hidden');
   
   const [isEditing, setIsEditing] = useState(false);
   const [newUsername, setNewUsername] = useState('');
@@ -15,23 +16,32 @@ const ProfileModal: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
-    const handler = (e: any) => {
-      console.log('ZenStream: Install prompt captured');
+    const handleBeforeInstallPrompt = (e: any) => {
+      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
+      // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
+      setInstallStatus('ready');
+      console.log('ZenStream: Install prompt is ready to be triggered.');
     };
 
-    const installedHandler = () => {
-      console.log('ZenStream: App installed successfully');
+    const handleAppInstalled = () => {
+      setInstallStatus('installed');
       setDeferredPrompt(null);
+      console.log('ZenStream: App was successfully installed.');
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', installedHandler);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
     
+    // Check if app is already in standalone mode
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setInstallStatus('installed');
+    }
+
     return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-      window.removeEventListener('appinstalled', installedHandler);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -42,6 +52,30 @@ const ProfileModal: React.FC = () => {
   }, [user]);
 
   if (!isProfileModalOpen || !user) return null;
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) {
+      // Logic for iOS where beforeinstallprompt isn't supported
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      if (isIOS) {
+        alert("To install ZenStream on iOS:\n1. Tap the Share button (square with arrow)\n2. Scroll down and tap 'Add to Home Screen'");
+      }
+      return;
+    }
+
+    setInstallStatus('installing');
+    deferredPrompt.prompt();
+    
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`ZenStream: Installation ${outcome}`);
+    
+    if (outcome === 'accepted') {
+      setInstallStatus('installed');
+      setDeferredPrompt(null);
+    } else {
+      setInstallStatus('ready');
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -66,20 +100,6 @@ const ProfileModal: React.FC = () => {
       setMessage({ type: 'error', text: res.message });
     }
     setUpdateLoading(false);
-  };
-
-  const handleInstall = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`ZenStream: User installation choice: ${outcome}`);
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-      }
-    } else {
-      // Basic instructions for iOS if the prompt isn't supported
-      alert("To install on iOS: Tap the 'Share' icon in Safari and select 'Add to Home Screen'.");
-    }
   };
 
   const username = String(user.user_metadata?.username || user.email?.split('@')[0] || 'User');
@@ -184,13 +204,16 @@ const ProfileModal: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button 
-                onClick={handleInstall}
-                className="bg-[#1ce783] text-black px-5 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-lg shadow-[#1ce783]/20 flex items-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                Install App
-              </button>
+              {installStatus !== 'installed' && (
+                <button 
+                  onClick={handleInstall}
+                  disabled={installStatus === 'installing'}
+                  className="bg-[#1ce783] text-black px-5 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-lg shadow-[#1ce783]/20 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  {installStatus === 'installing' ? 'Installing...' : 'Install App'}
+                </button>
+              )}
               <button 
                 onClick={handleLogout}
                 className="bg-white/5 hover:bg-red-600/10 border border-white/10 hover:border-red-600/50 text-gray-400 hover:text-red-500 px-6 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-xs"
