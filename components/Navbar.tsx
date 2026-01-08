@@ -60,8 +60,10 @@ const Navbar: React.FC = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 h-16 bg-[#040404]/90 backdrop-blur-xl border-b border-white/5 z-50 px-4 md:px-8 flex items-center justify-between">
       <Link to="/" className="flex items-center gap-2 group shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center rotate-3 group-hover:rotate-12 transition-transform duration-500 shadow-lg shadow-[#1ce783]/20">
-          <span className="text-black font-black text-lg italic">Z</span>
+        <div className="w-8 h-8 rounded-full bg-[#1ce783] flex items-center justify-center transition-transform duration-500 group-hover:scale-110 shadow-lg shadow-[#1ce783]/20">
+          <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4 ml-0.5">
+            <path d="M8 5v14l11-7z" />
+          </svg>
         </div>
         <span className="text-white font-black text-xl md:text-2xl tracking-tighter uppercase italic">
           ZEN<span className="text-[#1ce783]">STREAM</span>

@@ -30,8 +30,10 @@ const App: React.FC = () => {
             <div className="fixed inset-0 z-[200] bg-black flex items-center justify-center animate-out fade-out duration-500 fill-mode-forwards delay-[2000ms]">
               <div className="text-center animate-zen-intro">
                 <div className="flex items-center justify-center gap-4 mb-8 logo-pulse">
-                  <div className="w-20 h-20 md:w-32 md:h-32 rounded-3xl bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center rotate-12 shadow-2xl shadow-[#1ce783]/40">
-                    <span className="text-black font-black text-5xl md:text-7xl italic">Z</span>
+                  <div className="w-24 h-24 md:w-40 md:h-40 rounded-full bg-[#1ce783] flex items-center justify-center shadow-2xl shadow-[#1ce783]/40">
+                    <svg viewBox="0 0 24 24" fill="white" className="w-12 h-12 md:w-20 md:h-20 ml-2">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
                   </div>
                 </div>
                 <h1 className="text-5xl md:text-8xl font-black text-white italic tracking-tighter">
