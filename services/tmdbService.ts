@@ -45,6 +45,49 @@ export const fetchTrending = async (type: 'movie' | 'tv' | 'all' = 'movie', page
   }
 };
 
+/**
+ * Specifically fetches movies slated for 2026 release
+ */
+export const fetchUpcomingMovies = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
+  const cacheKey = `upcoming-movies-2026-${page}`;
+  const cached = getFromCache(cacheKey);
+  if (cached) return { results: cached.results.map((m: any) => ({ ...m, media_type: 'movie' })), totalPages: cached.total_pages };
+
+  try {
+    // Using discover to target 2026 specifically
+    const response = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&page=${page}&primary_release_year=2026&sort_by=popularity.desc&include_adult=false`);
+    const data = await handleResponse(response, cacheKey);
+    return {
+      results: (data.results || []).map((m: any) => ({ ...m, media_type: 'movie' })),
+      totalPages: data.total_pages || 1
+    };
+  } catch (err) {
+    console.error("fetchUpcomingMovies failed", err);
+    return { results: [], totalPages: 0 };
+  }
+};
+
+/**
+ * Specifically fetches TV shows slated for 2026 release
+ */
+export const fetchUpcomingTV = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
+  const cacheKey = `upcoming-tv-2026-${page}`;
+  const cached = getFromCache(cacheKey);
+  if (cached) return { results: cached.results.map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
+
+  try {
+    const response = await fetch(`${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&page=${page}&first_air_date_year=2026&sort_by=popularity.desc&include_adult=false`);
+    const data = await handleResponse(response, cacheKey);
+    return {
+      results: (data.results || []).map((m: any) => ({ ...m, media_type: 'tv' })),
+      totalPages: data.total_pages || 1
+    };
+  } catch (err) {
+    console.error("fetchUpcomingTV failed", err);
+    return { results: [], totalPages: 0 };
+  }
+};
+
 export const fetchGenres = async (type: 'movie' | 'tv'): Promise<{ id: number, name: string }[]> => {
   const cacheKey = `genres-${type}`;
   const cached = getFromCache(cacheKey);

@@ -61,6 +61,34 @@ export const getAISuggestions = async (prompt: string): Promise<AISuggestion[]> 
   }
 };
 
+/**
+ * Generates high-hype headlines for 2026 releases
+ */
+export const getUpcomingNews = async (titles: { title: string, overview: string }[]): Promise<Record<string, string>> => {
+  const ai = getAIClient();
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Given the following movies/TV titles slated for 2026 release, generate a single, high-hype "Future Pulse" headline for each. 
+      The sentence should sound like an exclusive entertainment leak or a highly anticipated cinematic teaser.
+      Focus on the excitement of the 2026 timeline.
+      
+      Data: ${JSON.stringify(titles)}
+      
+      Return as JSON object where keys are the titles and values are the pulse strings (max 12 words).`,
+      config: {
+        responseMimeType: "application/json",
+      }
+    });
+    
+    return JSON.parse(response.text || '{}');
+  } catch (e) {
+    console.error("Failed to generate 2026 pulses", e);
+    return {};
+  }
+};
+
 export const getCommentVibe = async (comments: Comment[], mediaTitle: string): Promise<string> => {
   if (comments.length === 0) return "Silence awaits your first impression.";
   

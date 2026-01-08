@@ -7,6 +7,7 @@ import Search from './pages/Search';
 import Details from './pages/Details';
 import Watchlist from './pages/Watchlist';
 import Anime from './pages/Anime';
+import Upcoming from './pages/Upcoming';
 import AuthModal from './components/AuthModal';
 import ProfileModal from './components/ProfileModal';
 import { AuthProvider } from './context/AuthContext';
@@ -50,6 +51,7 @@ const App: React.FC = () => {
           <main className={showSplash ? 'hidden' : 'block'}>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/upcoming" element={<Upcoming />} />
               <Route path="/search" element={<Search />} />
               <Route path="/anime" element={<Anime />} />
               <Route path="/watchlist" element={<Watchlist />} />
