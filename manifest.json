@@ -2,7 +2,7 @@
 {
   "name": "ZenStream - Cinematic Discovery",
   "short_name": "ZenStream",
-  "id": "/zenstream-pwa",
+  "id": "/zenstream-v1",
   "description": "Explore millions of movies and series with ZenStream. Pure cinematic discovery.",
   "start_url": "./index.html",
   "scope": "./",
@@ -12,12 +12,6 @@
   "theme_color": "#1ce783",
   "categories": ["entertainment", "video"],
   "icons": [
-    {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Ccircle cx='256' cy='256' r='256' fill='%231ce783'/%3E%3Cpath d='M192 128l192 128-192 128z' fill='white'/%3E%3C/svg%3E",
-      "sizes": "64x64",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
     {
       "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Ccircle cx='256' cy='256' r='256' fill='%231ce783'/%3E%3Cpath d='M192 128l192 128-192 128z' fill='white'/%3E%3C/svg%3E",
       "sizes": "192x192",
@@ -35,6 +29,22 @@
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=1000&auto=format&fit=crop",
+      "sizes": "1000x600",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "ZenStream Cinematic Home"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1598897349388-bc51d389b73b?q=80&w=1000&auto=format&fit=crop",
+      "sizes": "600x1000",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "ZenStream Mobile Discovery"
     }
   ],
   "prefer_related_applications": false

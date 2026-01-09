@@ -1,3 +1,4 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -8,12 +9,12 @@ window.onerror = function(message, source, lineno, colno, error) {
   return false;
 };
 
-// PWA Service Worker Registration
+// PWA Service Worker Registration - Must be registered for install prompt to show
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
       .then(reg => console.log('ZenStream: SW Registered', reg.scope))
-      .catch(err => console.log('ZenStream: SW Failed', err));
+      .catch(err => console.error('ZenStream: SW Failed', err));
   });
 }
 
