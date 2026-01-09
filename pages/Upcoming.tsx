@@ -16,6 +16,7 @@ const Upcoming: React.FC = () => {
     const loadData = async () => {
       setLoading(true);
       try {
+        // Fetch TMDB data in parallel
         const [movieRes, tvRes] = await Promise.all([
           fetchUpcomingMovies(1),
           fetchUpcomingTV(1)
@@ -27,8 +28,10 @@ const Upcoming: React.FC = () => {
         setMovies(upcomingMovies);
         setTvShows(upcomingTV);
         
+        // Show the grids immediately
         setLoading(false);
 
+        // Background AI Hype (Non-blocking)
         setLoadingNews(true);
         const titlesToHype = [...upcomingMovies.slice(0, 4), ...upcomingTV.slice(0, 4)].map(m => ({
           title: m.title || m.name || '',
@@ -58,24 +61,17 @@ const Upcoming: React.FC = () => {
   };
 
   if (loading) return (
-    <div className="pt-24 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen bg-[#040404]">
-      <div className="mb-16 space-y-4">
-        <div className="w-48 h-4 bg-white/5 rounded-full skeleton"></div>
-        <div className="w-1/2 h-16 md:h-24 bg-white/5 rounded-sm skeleton"></div>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => (
-          <div key={i} className="space-y-4">
-            <div className="aspect-[2/3] bg-white/5 rounded-sm skeleton"></div>
-            <div className="w-2/3 h-4 bg-white/5 rounded-full skeleton"></div>
-          </div>
-        ))}
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#040404]">
+      <div className="relative flex items-center justify-center">
+        <div className="w-12 h-12 border border-amber-500/10 rounded-full"></div>
+        <div className="absolute w-12 h-12 border-t border-amber-500 rounded-full animate-spin"></div>
       </div>
     </div>
   );
 
   return (
     <div className="pt-24 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
+      {/* Header Section */}
       <div className="mb-12 md:mb-16">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
           <div className="animate-in fade-in slide-in-from-left-4 duration-700">
@@ -95,6 +91,7 @@ const Upcoming: React.FC = () => {
         </div>
       </div>
 
+      {/* AI Hype Ticker - Always rendered to prevent jump, shows skeletons while loading */}
       <div className="mb-16 md:mb-24 relative">
         <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/10 to-transparent blur-3xl opacity-20"></div>
         <div className="relative bg-[#0a0a0a] border border-amber-500/10 rounded-3xl p-6 md:p-10">
@@ -110,6 +107,7 @@ const Upcoming: React.FC = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
             {loadingNews ? (
+              // Skeleton UI for loading state
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex gap-4 items-start animate-pulse">
                   <div className="w-8 h-8 bg-white/5 rounded-lg shrink-0"></div>
@@ -120,6 +118,7 @@ const Upcoming: React.FC = () => {
                 </div>
               ))
             ) : (
+              // Actual content when ready
               Object.entries(news).map(([title, snippet], idx) => (
                 <div key={idx} className="group flex gap-4 items-start animate-in fade-in duration-500">
                   <div className="text-amber-500/20 font-black italic text-xl shrink-0 group-hover:text-amber-500 transition-colors">
@@ -138,6 +137,7 @@ const Upcoming: React.FC = () => {
         </div>
       </div>
 
+      {/* Movies 2026 */}
       <section className="mb-20 md:mb-32 animate-in fade-in slide-in-from-bottom-6 duration-1000">
         <div className="flex items-center gap-6 mb-10 md:mb-16">
           <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter">
@@ -168,6 +168,7 @@ const Upcoming: React.FC = () => {
         </div>
       </section>
 
+      {/* Series 2026 */}
       <section className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
         <div className="flex items-center gap-6 mb-10 md:mb-16">
           <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter text-white">
@@ -198,6 +199,7 @@ const Upcoming: React.FC = () => {
         </div>
       </section>
       
+      {/* Future Disclaimer */}
       <div className="mt-24 pt-12 border-t border-white/5 text-center opacity-40">
         <p className="text-gray-600 text-[8px] font-black uppercase tracking-[0.3em] max-w-xl mx-auto">
           Experimental 2026 data stream. Dates and metadata are projected and subject to change.

@@ -50,7 +50,7 @@ const App: React.FC = () => {
           <AuthModal />
           <ProfileModal />
           
-          <main className={`${showSplash ? 'hidden' : 'block'} pb-24 md:pb-0 md:pt-16`}>
+          <main className={showSplash ? 'hidden' : 'block'}>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/upcoming" element={<Upcoming />} />
@@ -62,7 +62,7 @@ const App: React.FC = () => {
           </main>
           
           {!showSplash && (
-            <footer className="py-12 px-4 md:px-12 border-t border-white/5 bg-black/50 text-center text-gray-500 text-xs mb-20 md:mb-0">
+            <footer className="py-12 px-4 md:px-12 border-t border-white/5 bg-black/50 text-center text-gray-500 text-xs">
               <div className="max-w-7xl mx-auto">
                 <p className="mb-2 font-black text-[#1ce783] tracking-widest uppercase italic">ZENSTREAM © 2025</p>
                 <p className="max-w-md mx-auto leading-relaxed">

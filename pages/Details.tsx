@@ -9,6 +9,7 @@ import { useHistory } from '../hooks/useHistory';
 import MediaCard from '../components/MediaCard';
 import CommentSection from '../components/CommentSection';
 
+// Extend Window interface for YouTube API
 declare global {
   interface Window {
     onYouTubeIframeAPIReady: () => void;
@@ -16,7 +17,7 @@ declare global {
   }
 }
 
-export default function Details() {
+const Details: React.FC = () => {
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
   const [media, setMedia] = useState<Movie | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -39,6 +40,7 @@ export default function Details() {
   const ytPlayerRef = useRef<any>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Initialize YouTube API
   useEffect(() => {
     if (!window.YT) {
       const tag = document.createElement('script');
@@ -67,6 +69,7 @@ export default function Details() {
 
         loadRecommendations(Number(id), type);
 
+        // Auto-play the cinematic preview after 3 seconds
         if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
         previewTimerRef.current = window.setTimeout(() => {
           setAutoPreviewActive(true);
@@ -87,11 +90,13 @@ export default function Details() {
     };
   }, [id, type]);
 
+  // Handle YouTube Player Events to detect video end
   useEffect(() => {
     if (autoPreviewActive && iframeRef.current && window.YT && window.YT.Player) {
       ytPlayerRef.current = new window.YT.Player(iframeRef.current, {
         events: {
           onStateChange: (event: any) => {
+            // YT.PlayerState.ENDED = 0
             if (event.data === 0) {
               setAutoPreviewActive(false);
             }
@@ -146,40 +151,13 @@ export default function Details() {
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
   
+  // Notice loop=0 and enablejsapi=1
   const backgroundTrailerUrl = trailer 
     ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&enablejsapi=1&origin=${window.location.origin}`
     : '';
 
-  if (loading) return (
-    <div className="min-h-screen pb-20 bg-[#040404] animate-in fade-in duration-500">
-      <div className="h-[50vh] md:h-[90vh] w-full skeleton relative">
-        <div className="absolute bottom-0 left-0 p-4 md:p-16 space-y-4 w-full max-w-5xl">
-          <div className="w-48 h-6 bg-white/5 rounded-full"></div>
-          <div className="w-full h-16 md:h-24 bg-white/5 rounded-sm"></div>
-          <div className="flex gap-4">
-            <div className="w-40 h-14 bg-white/5 rounded-sm"></div>
-            <div className="w-40 h-14 bg-white/5 rounded-sm"></div>
-          </div>
-        </div>
-      </div>
-      <div className="max-w-7xl mx-auto px-4 md:px-16 py-12 grid grid-cols-1 lg:grid-cols-3 gap-16">
-        <div className="lg:col-span-2 space-y-12">
-           <div className="w-full h-4 bg-white/5 rounded-full"></div>
-           <div className="w-full h-4 bg-white/5 rounded-full"></div>
-           <div className="w-2/3 h-4 bg-white/5 rounded-full"></div>
-           <div className="pt-12 grid grid-cols-3 md:grid-cols-5 gap-4">
-             {[1, 2, 3, 4, 5].map(i => <div key={i} className="aspect-[2/3] skeleton rounded-sm"></div>)}
-           </div>
-        </div>
-        <div className="lg:col-span-1">
-          <div className="w-full h-64 bg-white/5 rounded-3xl skeleton"></div>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen pb-20 bg-[#040404]">
+    <div className="pt-16 min-h-screen pb-20 bg-[#040404]">
       {isPlaying ? (
         <div className="relative w-full aspect-video max-w-7xl mx-auto md:rounded-xl mt-0 md:mt-8 bg-black shadow-2xl overflow-hidden group/player">
           {playerLoading && (
@@ -197,9 +175,12 @@ export default function Details() {
           />
         </div>
       ) : (
-        <div className="relative h-[60vh] md:h-[90vh] w-full bg-black overflow-hidden shadow-2xl">
-          {!media ? null : (
+        <div className="relative h-[50vh] md:h-[90vh] w-full bg-black overflow-hidden shadow-2xl">
+          {loading || !media ? (
+            <div className="absolute inset-0 bg-[#0a0a0a] animate-pulse" />
+          ) : (
             <>
+              {/* Main Backdrop / Poster Area */}
               <div className={`absolute inset-0 z-0 transition-opacity duration-[1500ms] ${autoPreviewActive && trailer ? 'opacity-0' : 'opacity-100'}`}>
                 <img 
                   src={`${BACKDROP_URL}${media.backdrop_path}`} 
@@ -208,6 +189,7 @@ export default function Details() {
                 />
               </div>
 
+              {/* Background Trailer (Preview) */}
               {trailer && autoPreviewActive && (
                 <div className="absolute inset-0 z-0 overflow-hidden">
                   <iframe 
@@ -219,19 +201,14 @@ export default function Details() {
                 </div>
               )}
 
+              {/* Overlay Gradients - They stay visible to keep the text readable */}
               <div className={`absolute inset-0 bg-gradient-to-t from-[#040404] via-transparent to-[#040404]/40 z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
               <div className={`absolute inset-0 bg-gradient-to-r from-[#040404] via-[#040404]/40 to-transparent z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
               
+              {/* Metadata Overlay - Stays visible throughout */}
               <div className="absolute bottom-0 left-0 p-4 md:p-16 w-full max-w-5xl z-20">
-                <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-3 md:mb-6 animate-in slide-in-from-left-4 duration-700">
-                  <div className="flex items-center gap-1.5 md:gap-2 bg-black/40 backdrop-blur-md px-2 md:px-3 py-1 rounded-sm border border-white/10">
-                    <span className="text-[#1ce783] text-[10px] md:text-sm font-black">★</span>
-                    <span className="text-white text-[10px] md:text-sm font-black tracking-tighter">
-                      {media.vote_average.toFixed(1)}
-                    </span>
-                  </div>
-                  <div className="h-4 w-[1px] bg-white/20"></div>
-                  <span className="bg-[#1ce783] text-black px-2 md:px-3 py-0.5 md:py-1 rounded-sm text-[8px] md:text-[10px] font-black uppercase tracking-tighter">ZENSTREAM SELECTION</span>
+                <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4 animate-in slide-in-from-left-4 duration-700">
+                  <span className="bg-[#1ce783] text-black px-2 md:px-3 py-0.5 rounded-sm text-[8px] md:text-[10px] font-black uppercase tracking-tighter">ZENSTREAM SELECTION</span>
                   <span className="text-white/80 text-[10px] md:text-xs font-bold">{releaseYear}</span>
                 </div>
                 <h1 className="text-3xl md:text-8xl font-black uppercase italic tracking-tighter mb-4 md:mb-8 leading-none drop-shadow-2xl animate-in slide-in-from-left-6 duration-700 line-clamp-2">
@@ -243,6 +220,7 @@ export default function Details() {
                 </div>
               </div>
 
+              {/* Rolling Trailer Toggle Button - Optimized size for mobile */}
               {trailer && (
                 <div className="absolute top-24 right-4 md:right-16 z-30 flex flex-col items-center gap-2 md:gap-3">
                   <button 
@@ -337,7 +315,7 @@ export default function Details() {
               </div>
               {loadingSimilar ? (
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 md:gap-4">
-                    {[1, 2, 3, 4, 5, 6].map(i => (<div key={i} className="aspect-[2/3] bg-white/5 skeleton rounded-sm" />))}
+                    {[1, 2, 3, 4, 5, 6].map(i => (<div key={i} className="aspect-[2/3] bg-white/5 animate-pulse rounded-2xl" />))}
                   </div>
               ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
@@ -365,4 +343,6 @@ export default function Details() {
       </div>
     </div>
   );
-}
+};
+
+export default Details;
