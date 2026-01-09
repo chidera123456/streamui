@@ -1,6 +1,6 @@
 
-// ZenStream Service Worker v2.6 - Optimized for Chrome PWA Installability
-const CACHE_NAME = 'zenstream-v6';
+// ZenStream Service Worker v2.7 - Optimized for Chrome PWA Installability
+const CACHE_NAME = 'zenstream-v7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -35,13 +35,13 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Fetch: Network-first for navigation, Cache-first for assets
+// Fetch: Strategy for offline capabilities
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // Navigation requests: Try network, fallback to cache
+  // Navigation requests: Network-first, fallback to offline shell
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
@@ -51,13 +51,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Asset caching strategy
+  // Assets: Cache-first strategy
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
 
       return fetch(event.request).then((networkResponse) => {
-        // Cache images and local assets on the fly
+        // Cache external images from TMDB and local assets
         if (networkResponse && networkResponse.status === 200) {
           const isImage = url.hostname.includes('tmdb.org');
           const isLocal = url.origin === self.location.origin;

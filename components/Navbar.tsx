@@ -1,13 +1,27 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
   const { user, openAuthModal, openProfileModal } = useAuth();
+  const [canInstall, setCanInstall] = useState(false);
   
   const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      // Browsers fire this if the PWA is installable
+      setCanInstall(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    // Also check for stand-alone mode to hide if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setCanInstall(false);
+    }
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   const rawUsername = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
   const username = String(rawUsername);
@@ -87,6 +101,17 @@ const Navbar: React.FC = () => {
           </Link>
         ))}
 
+        {/* Dynamic Download Icon for Mobile */}
+        {canInstall && (
+          <button 
+            onClick={openProfileModal}
+            className="flex flex-col items-center justify-center gap-1 group text-amber-500 animate-pulse md:hidden"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span className="text-[8px] font-black uppercase tracking-widest">App</span>
+          </button>
+        )}
+
         {/* Profile/Auth Button - Appears in Nav flow on Mobile */}
         <div className="flex md:hidden items-center justify-center">
           {user ? (
@@ -112,7 +137,17 @@ const Navbar: React.FC = () => {
       </div>
 
       {/* Profile/Auth Button - Far Right on Desktop */}
-      <div className="hidden md:flex items-center shrink-0">
+      <div className="hidden md:flex items-center gap-4 shrink-0">
+        {canInstall && (
+          <button 
+            onClick={openProfileModal}
+            className="flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 rounded-full transition-all text-amber-500 group"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-y-0.5 transition-transform"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span className="text-[10px] font-black uppercase tracking-widest">Get App</span>
+          </button>
+        )}
+        
         {user ? (
           <button 
             onClick={openProfileModal}

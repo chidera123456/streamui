@@ -65,6 +65,7 @@ const ProfileModal: React.FC = () => {
       console.log(`ZenStream: User ${outcome} the install prompt`);
       setDeferredPrompt(null);
     } else {
+      // If prompt isn't supported/available, show the manual guide
       setShowInstallGuide(true);
     }
   };
@@ -83,16 +84,10 @@ const ProfileModal: React.FC = () => {
   };
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
   const username = String(user.user_metadata?.username || user.email?.split('@')[0] || 'User');
   const initial = username.length > 0 ? username.charAt(0) : 'U';
-  
-  const joinedDate = user.created_at 
-    ? new Date(user.created_at).toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric'
-      })
-    : 'Recently';
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -199,7 +194,7 @@ const ProfileModal: React.FC = () => {
                 onClick={handleInstall}
                 className={`px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg ${deferredPrompt ? 'bg-amber-500 text-black shadow-amber-500/20 animate-pulse' : 'bg-[#1ce783] text-black shadow-[#1ce783]/20'}`}
               >
-                {deferredPrompt ? 'Download App' : 'Get App'}
+                {deferredPrompt ? 'Install App' : 'Get App'}
               </button>
               <button 
                 onClick={handleLogout}
@@ -219,13 +214,13 @@ const ProfileModal: React.FC = () => {
                  </button>
                </div>
                <div className="space-y-4">
-                 {isIOS ? (
+                 {(isIOS || isSafari) ? (
                    <div className="flex gap-4 items-start">
                      <div className="w-8 h-8 rounded-lg bg-[#1ce783] flex items-center justify-center shrink-0">
                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
                      </div>
                      <p className="text-gray-300 text-xs leading-relaxed">
-                       Tap the <span className="text-white font-black">Share</span> icon in Safari and select <span className="text-white font-black">"Add to Home Screen"</span> for a native app experience.
+                       To download: Tap <span className="text-white font-black">Share</span> then <span className="text-white font-black">"Add to Home Screen"</span>.
                      </p>
                    </div>
                  ) : (
@@ -234,7 +229,7 @@ const ProfileModal: React.FC = () => {
                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                      </div>
                      <p className="text-gray-300 text-xs leading-relaxed">
-                       Click the <span className="text-white font-black">three dots</span> in Chrome and select <span className="text-white font-black">"Install App"</span> or <span className="text-white font-black">"Add to Home Screen"</span>.
+                       To download: Open browser menu and select <span className="text-white font-black">"Install App"</span> or <span className="text-white font-black">"Add to Home Screen"</span>.
                      </p>
                    </div>
                  )}
@@ -251,8 +246,8 @@ const ProfileModal: React.FC = () => {
                   <span className="text-[#1ce783] font-black text-xs uppercase tracking-tighter italic">Ready</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500 text-[10px] font-bold uppercase">PWA Sync</span>
-                  <span className="text-white font-black text-xs uppercase tracking-tighter">Active</span>
+                  <span className="text-gray-500 text-[10px] font-bold uppercase">Native App</span>
+                  <span className="text-white font-black text-xs uppercase tracking-tighter">Support</span>
                 </div>
               </div>
             </div>
