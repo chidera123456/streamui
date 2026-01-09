@@ -1,12 +1,16 @@
+
 {
   "name": "ZenStream - Cinematic Discovery",
   "short_name": "ZenStream",
+  "id": "/zenstream-pwa",
   "description": "Explore millions of movies and series with ZenStream. Pure cinematic discovery.",
-  "start_url": "./",
-  "scope": ".",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#040404",
   "theme_color": "#1ce783",
+  "categories": ["entertainment", "video"],
   "icons": [
     {
       "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Ccircle cx='256' cy='256' r='256' fill='%231ce783'/%3E%3Cpath d='M192 128l192 128-192 128z' fill='white'/%3E%3C/svg%3E",

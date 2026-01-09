@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useWatchlist } from '../hooks/useWatchlist';
@@ -18,6 +19,7 @@ const ProfileModal: React.FC = () => {
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      console.log('ZenStream: Install prompt captured');
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
@@ -60,9 +62,8 @@ const ProfileModal: React.FC = () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-      }
+      console.log(`ZenStream: User ${outcome} the install prompt`);
+      setDeferredPrompt(null);
     } else {
       setShowInstallGuide(true);
     }
@@ -196,9 +197,9 @@ const ProfileModal: React.FC = () => {
               </button>
               <button 
                 onClick={handleInstall}
-                className="bg-[#1ce783] text-black px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-lg shadow-[#1ce783]/20"
+                className={`px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg ${deferredPrompt ? 'bg-amber-500 text-black shadow-amber-500/20 animate-pulse' : 'bg-[#1ce783] text-black shadow-[#1ce783]/20'}`}
               >
-                {deferredPrompt ? 'Install App' : 'Get App'}
+                {deferredPrompt ? 'Download App' : 'Get App'}
               </button>
               <button 
                 onClick={handleLogout}
@@ -212,7 +213,7 @@ const ProfileModal: React.FC = () => {
           {showInstallGuide && (
             <div className="mt-8 bg-[#1ce783]/5 border border-[#1ce783]/20 p-6 rounded-2xl animate-in slide-in-from-top-4 duration-300">
                <div className="flex items-center justify-between mb-4">
-                 <h3 className="text-[#1ce783] font-black uppercase tracking-widest text-xs">Installation Guide</h3>
+                 <h3 className="text-[#1ce783] font-black uppercase tracking-widest text-xs">PWA Installation</h3>
                  <button onClick={() => setShowInstallGuide(false)} className="text-gray-500 hover:text-white">
                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                  </button>
@@ -224,7 +225,7 @@ const ProfileModal: React.FC = () => {
                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
                      </div>
                      <p className="text-gray-300 text-xs leading-relaxed">
-                       Tap the <span className="text-white font-black">Share</span> icon in Safari and select <span className="text-white font-black">"Add to Home Screen"</span> for the best experience.
+                       Tap the <span className="text-white font-black">Share</span> icon in Safari and select <span className="text-white font-black">"Add to Home Screen"</span> for a native app experience.
                      </p>
                    </div>
                  ) : (
@@ -233,7 +234,7 @@ const ProfileModal: React.FC = () => {
                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                      </div>
                      <p className="text-gray-300 text-xs leading-relaxed">
-                       Open Chrome settings and select <span className="text-white font-black">"Install App"</span>. Check your <span className="text-white font-black">App Drawer</span> if it's not on the main home screen.
+                       Click the <span className="text-white font-black">three dots</span> in Chrome and select <span className="text-white font-black">"Install App"</span> or <span className="text-white font-black">"Add to Home Screen"</span>.
                      </p>
                    </div>
                  )}
@@ -243,24 +244,24 @@ const ProfileModal: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
             <div className="bg-white/5 p-5 rounded-2xl border border-white/10">
-              <p className="text-[10px] font-black text-[#1ce783] uppercase mb-4 tracking-widest">Account Info</p>
+              <p className="text-[10px] font-black text-[#1ce783] uppercase mb-4 tracking-widest">App Capability</p>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-500 text-[10px] font-bold uppercase">Member Since</span>
-                  <span className="text-white font-black text-xs">{joinedDate}</span>
+                  <span className="text-gray-500 text-[10px] font-bold uppercase">Offline Mode</span>
+                  <span className="text-[#1ce783] font-black text-xs uppercase tracking-tighter italic">Ready</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500 text-[10px] font-bold uppercase">Cloud ID</span>
-                  <span className="text-white font-black text-[9px] truncate max-w-[100px]">{user.id.substring(0,8)}...</span>
+                  <span className="text-gray-500 text-[10px] font-bold uppercase">PWA Sync</span>
+                  <span className="text-white font-black text-xs uppercase tracking-tighter">Active</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-white/5 p-5 rounded-2xl border border-white/10">
-              <p className="text-[10px] font-black text-[#1ce783] uppercase mb-4 tracking-widest">Collection</p>
+              <p className="text-[10px] font-black text-[#1ce783] uppercase mb-4 tracking-widest">Cloud Sync</p>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500 text-[10px] font-bold uppercase">Watchlist</span>
+                  <span className="text-gray-500 text-[10px] font-bold uppercase">Synced Items</span>
                   <Link 
                     to="/watchlist" 
                     onClick={closeProfileModal}
@@ -269,7 +270,7 @@ const ProfileModal: React.FC = () => {
                     {watchlist.length}
                   </Link>
                 </div>
-                <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">Cloud Sync Active</p>
+                <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">Encrypted Cloud Storage</p>
               </div>
             </div>
           </div>
