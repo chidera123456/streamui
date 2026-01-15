@@ -81,6 +81,11 @@
     .logo-pulse {
       animation: logoPulse 3s infinite;
     }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
     
     .zen-gradient-text {
       background: linear-gradient(to right, #1ce783, #00ed82, #60fe9d);
@@ -88,7 +93,22 @@
       -webkit-text-fill-color: transparent;
     }
     
-    img { content-visibility: auto; }
+    /* Global optimization for Eager Loading */
+    img { 
+      content-visibility: auto; 
+      image-rendering: auto;
+      -webkit-user-drag: none;
+      background-color: #0a0a0a;
+      backface-visibility: hidden;
+      transform: translateZ(0);
+    }
+    
+    /* Ensure the browser treats scrolling as high-priority */
+    * {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      scroll-padding-top: 80px;
+    }
   </style>
 <script type="importmap">
 {

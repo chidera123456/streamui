@@ -162,7 +162,7 @@ const Search: React.FC = () => {
   };
 
   return (
-    <div className="pt-20 md:pt-24 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
+    <div className="pt-8 md:pt-4 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
       <div className="mb-8 md:mb-12 text-center">
         <h1 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter mb-2 md:mb-4">
           Search <span className="text-[#1ce783]">Engine</span>
@@ -392,6 +392,12 @@ const Search: React.FC = () => {
         </div>
       )}
 
+      {loading && results.length === 0 && (
+        <div className="flex justify-center py-20">
+           <div className="w-10 h-10 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
+
       {results.length > 0 && (
         <div className="space-y-12 animate-in fade-in duration-700">
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
@@ -405,19 +411,12 @@ const Search: React.FC = () => {
               <button
                 onClick={() => triggerSearch(page + 1, true)}
                 disabled={loadingMore}
-                className="bg-white/5 hover:bg-white/10 border border-white/10 px-10 md:px-12 py-3 md:py-4 rounded-sm text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all"
+                className="bg-white/5 hover:bg-white/10 border border-white/10 px-10 md:px-12 py-3 md:py-4 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all"
               >
                 {loadingMore ? 'Loading More...' : 'Load More'}
               </button>
             </div>
           )}
-        </div>
-      )}
-
-      {loading && results.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-32 space-y-4">
-          <div className="w-12 h-12 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-gray-500 animate-pulse">Syncing Galaxy...</p>
         </div>
       )}
 

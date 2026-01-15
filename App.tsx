@@ -1,16 +1,20 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import Home from './pages/Home';
-import Search from './pages/Search';
-import Details from './pages/Details';
-import Watchlist from './pages/Watchlist';
-import Anime from './pages/Anime';
-import Upcoming from './pages/Upcoming';
 import AuthModal from './components/AuthModal';
 import ProfileModal from './components/ProfileModal';
 import { AuthProvider } from './context/AuthContext';
+import { HeroSkeleton } from './components/Skeleton';
+
+// Lazy load page corners
+const Home = lazy(() => import('./pages/Home'));
+const Upcoming = lazy(() => import('./pages/Upcoming'));
+const Search = lazy(() => import('./pages/Search'));
+const Anime = lazy(() => import('./pages/Anime'));
+const Watchlist = lazy(() => import('./pages/Watchlist'));
+const Details = lazy(() => import('./pages/Details'));
+const Profile = lazy(() => import('./pages/Profile'));
 
 const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -25,7 +29,7 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-[#040404] text-white">
+        <div className="min-h-screen bg-[#040404] text-white flex flex-col">
           {showSplash && (
             <div className="fixed inset-0 z-[200] bg-black flex items-center justify-center animate-out fade-out duration-500 fill-mode-forwards delay-[2000ms]">
               <div className="text-center animate-zen-intro">
@@ -50,23 +54,26 @@ const App: React.FC = () => {
           <AuthModal />
           <ProfileModal />
           
-          <main className={showSplash ? 'hidden' : 'block'}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/upcoming" element={<Upcoming />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/anime" element={<Anime />} />
-              <Route path="/watchlist" element={<Watchlist />} />
-              <Route path="/details/:type/:id" element={<Details />} />
-            </Routes>
+          <main className={`${showSplash ? 'hidden' : 'block'} flex-1 pb-20 md:pb-0 md:pt-20`}>
+            <Suspense fallback={<HeroSkeleton />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/upcoming" element={<Upcoming />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/anime" element={<Anime />} />
+                <Route path="/watchlist" element={<Watchlist />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/details/:type/:id" element={<Details />} />
+              </Routes>
+            </Suspense>
           </main>
           
           {!showSplash && (
-            <footer className="py-12 px-4 md:px-12 border-t border-white/5 bg-black/50 text-center text-gray-500 text-xs">
+            <footer className="hidden md:block py-12 px-4 md:px-12 border-t border-white/5 bg-black/50 text-center text-gray-500 text-xs">
               <div className="max-w-7xl mx-auto">
                 <p className="mb-2 font-black text-[#1ce783] tracking-widest uppercase italic">ZENSTREAM © 2025</p>
                 <p className="max-w-md mx-auto leading-relaxed">
-                  Powered by TMDB. Your profile and watchlist are securely synced to your account across all devices.
+                  Powered by TMDB & Gemini AI. Your profile and watchlist are securely synced to your account across all devices.
                 </p>
               </div>
             </footer>

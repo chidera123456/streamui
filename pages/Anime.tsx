@@ -5,74 +5,73 @@ import { fetchAnime } from '../services/tmdbService';
 import { Movie } from '../types';
 import { BACKDROP_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
+import { GridSkeleton, HeroSkeleton } from '../components/Skeleton';
 
 const Anime: React.FC = () => {
   const [hero, setHero] = useState<Movie | null>(null);
   const [trending, setTrending] = useState<Movie[]>([]);
   const [action, setAction] = useState<Movie[]>([]);
   const [fantasy, setFantasy] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  const [loadingHero, setLoadingHero] = useState(true);
+  const [loadingTrending, setLoadingTrending] = useState(true);
+  const [loadingAction, setLoadingAction] = useState(true);
+  const [loadingFantasy, setLoadingFantasy] = useState(true);
 
   useEffect(() => {
-    const loadAnimeData = async () => {
-      try {
-        setLoading(true);
-        // Action & Adventure (TV) = 10759
-        // Sci-Fi & Fantasy (TV) = 10765
-        const [trendRes, actionRes, fantasyRes] = await Promise.all([
-          fetchAnime(1),
-          fetchAnime(1, 10759),
-          fetchAnime(1, 10765)
-        ]);
-
-        setTrending(trendRes.results);
-        setAction(actionRes.results);
-        setFantasy(fantasyRes.results);
-
-        if (trendRes.results.length > 0) {
-          const validHeroes = trendRes.results.filter(m => m.backdrop_path);
-          const top = validHeroes.length > 0 
-            ? validHeroes[Math.floor(Math.random() * Math.min(3, validHeroes.length))]
-            : trendRes.results[0];
-          setHero(top);
-        }
-      } catch (err) {
-        console.error("Anime page data load failed:", err);
-      } finally {
-        setLoading(false);
+    // Priority: Trending + Hero
+    fetchAnime(1).then(res => {
+      setTrending(res.results);
+      if (res.results.length > 0) {
+        const validHeroes = res.results.filter(m => m.backdrop_path);
+        const top = validHeroes.length > 0 
+          ? validHeroes[Math.floor(Math.random() * Math.min(3, validHeroes.length))]
+          : res.results[0];
+        setHero(top);
       }
-    };
-    loadAnimeData();
+      setLoadingHero(false);
+      setLoadingTrending(false);
+    });
+
+    // Sub-genres
+    fetchAnime(1, 10759).then(res => {
+      setAction(res.results);
+      setLoadingAction(false);
+    });
+
+    fetchAnime(1, 10765).then(res => {
+      setFantasy(res.results);
+      setLoadingFantasy(false);
+    });
+
     window.scrollTo(0, 0);
   }, []);
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#040404]">
-      <div className="w-12 md:w-16 h-12 md:h-16 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
 
   return (
     <div className="pb-20 bg-[#040404]">
       {/* Anime Hero Banner */}
-      {hero && (
+      {loadingHero ? (
+        <HeroSkeleton />
+      ) : hero && (
         <section className="relative h-[50vh] md:h-[85vh] w-full overflow-hidden">
           <div className="absolute inset-0">
             <img 
               src={`${BACKDROP_URL}${hero.backdrop_path}`}
               className="w-full h-full object-cover animate-in fade-in zoom-in-105 duration-1000"
               alt={hero.name}
+              loading="eager"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-[#040404]/40 to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent" />
           </div>
           
           <div className="absolute bottom-0 left-0 p-4 md:p-16 max-w-4xl space-y-4 md:space-y-6">
-            <div className="flex items-center gap-2 md:gap-3">
-              <span className="bg-cyan-500 text-black text-[8px] md:text-[10px] font-black px-3 md:px-4 py-1 md:py-1.5 rounded-sm uppercase tracking-widest shadow-xl shadow-cyan-900/20">Essential Anime</span>
-              <span className="text-white/80 text-[10px] md:text-xs font-black flex items-center gap-1 bg-black/40 px-2 md:px-3 py-0.5 md:py-1 rounded-sm backdrop-blur-md border border-white/5">
-                <span className="text-cyan-400">★</span> {hero.vote_average.toFixed(1)}
+            <div className="flex items-center gap-3 md:gap-4">
+              <span className="text-cyan-400 text-sm md:text-xl font-black flex items-center gap-1 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                ★ {hero.vote_average.toFixed(1)}
               </span>
+              <div className="h-[1px] w-12 bg-cyan-500/30"></div>
+              <span className="text-white/60 text-[10px] md:text-xs font-black uppercase tracking-[0.2em]">Anime Hub Exclusive</span>
             </div>
             <h1 className="text-3xl md:text-8xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl">
               {hero.name}
@@ -109,11 +108,15 @@ const Anime: React.FC = () => {
               </h2>
             </div>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
-            {trending.slice(0, 15).map(movie => (
-              <MediaCard key={movie.id} media={movie} />
-            ))}
-          </div>
+          {loadingTrending ? (
+            <GridSkeleton count={8} />
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
+              {trending.slice(0, 18).map(movie => (
+                <MediaCard key={movie.id} media={movie} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section>
@@ -125,11 +128,15 @@ const Anime: React.FC = () => {
               </h2>
             </div>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
-            {action.slice(0, 15).map(movie => (
-              <MediaCard key={movie.id} media={movie} />
-            ))}
-          </div>
+          {loadingAction ? (
+            <GridSkeleton count={8} />
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
+              {action.slice(0, 18).map(movie => (
+                <MediaCard key={movie.id} media={movie} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section>
@@ -141,11 +148,15 @@ const Anime: React.FC = () => {
               </h2>
             </div>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
-            {fantasy.slice(0, 15).map(movie => (
-              <MediaCard key={movie.id} media={movie} />
-            ))}
-          </div>
+          {loadingFantasy ? (
+            <GridSkeleton count={8} />
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
+              {fantasy.slice(0, 18).map(movie => (
+                <MediaCard key={movie.id} media={movie} />
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </div>

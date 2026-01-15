@@ -1,6 +1,6 @@
 
-// ZenStream Service Worker v2.5
-const CACHE_NAME = 'zenstream-v5';
+// ZenStream Service Worker v3.1 - Zero-Flicker Image Strategy
+const CACHE_NAME = 'zenstream-v7';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -23,7 +23,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((name) => {
-          if (name !== CACHE_NAME) {
+          if (name !== CACHE_NAME && name !== 'zenstream-images') {
             return caches.delete(name);
           }
         })
@@ -33,13 +33,35 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Fetch: Optimized for SPA Navigation and PWA standalone mode
+// Fetch: Ultra-aggressive for images
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+  const isImage = url.hostname.includes('tmdb.org') || url.hostname.includes('image.tmdb.org');
 
-  // For navigation requests (opening the app), try network first, fallback to cached index.html
+  // STRATEGY: Cache First with forced immutability for images
+  if (isImage) {
+    event.respondWith(
+      caches.open('zenstream-images').then((cache) => {
+        return cache.match(event.request).then((cachedResponse) => {
+          // If in cache, return immediately (Zero latency)
+          if (cachedResponse) return cachedResponse;
+          
+          return fetch(event.request).then((networkResponse) => {
+            if (networkResponse.status === 200) {
+              // Clone and store for next time
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          });
+        });
+      })
+    );
+    return;
+  }
+
+  // Navigation: Try network, then cache
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
@@ -49,28 +71,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Generic asset caching (Cache First, falling back to Network)
+  // Generic asset caching (Stale While Revalidate)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
-        // Cache successful TMDB image responses or local assets
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
-          const isImage = url.hostname.includes('tmdb.org');
-          const isLocal = url.origin === self.location.origin;
-          
-          if (isImage || isLocal) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
         return networkResponse;
       }).catch(() => null);
+
+      return cachedResponse || fetchPromise;
     })
   );
 });

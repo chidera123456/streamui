@@ -2,9 +2,9 @@
 import { TMDB_API_KEY, TMDB_BASE_URL } from '../constants';
 import { Movie, Episode } from '../types';
 
-// Simple in-memory cache to speed up navigation
+// Extended in-memory cache for ultra-smooth navigation
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 1000 * 60 * 10; // 10 minutes cache
+const CACHE_DURATION = 1000 * 60 * 30; // Increased to 30 minutes
 
 const handleResponse = async (response: Response, cacheKey?: string) => {
   if (!response.ok) {
@@ -45,16 +45,30 @@ export const fetchTrending = async (type: 'movie' | 'tv' | 'all' = 'movie', page
   }
 };
 
-/**
- * Specifically fetches movies slated for 2026 release
- */
+export const fetchNetflixContent = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
+  const cacheKey = `netflix-originals-${page}`;
+  const cached = getFromCache(cacheKey);
+  if (cached) return { results: cached.results.map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
+
+  try {
+    const response = await fetch(`${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_networks=213&sort_by=popularity.desc&page=${page}`);
+    const data = await handleResponse(response, cacheKey);
+    return {
+      results: (data.results || []).map((m: any) => ({ ...m, media_type: 'tv' })),
+      totalPages: data.total_pages || 1
+    };
+  } catch (err) {
+    console.error("fetchNetflixContent failed", err);
+    return { results: [], totalPages: 0 };
+  }
+};
+
 export const fetchUpcomingMovies = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `upcoming-movies-2026-${page}`;
   const cached = getFromCache(cacheKey);
   if (cached) return { results: cached.results.map((m: any) => ({ ...m, media_type: 'movie' })), totalPages: cached.total_pages };
 
   try {
-    // Using discover to target 2026 specifically
     const response = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&page=${page}&primary_release_year=2026&sort_by=popularity.desc&include_adult=false`);
     const data = await handleResponse(response, cacheKey);
     return {
@@ -67,9 +81,6 @@ export const fetchUpcomingMovies = async (page: number = 1): Promise<{ results: 
   }
 };
 
-/**
- * Specifically fetches TV shows slated for 2026 release
- */
 export const fetchUpcomingTV = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `upcoming-tv-2026-${page}`;
   const cached = getFromCache(cacheKey);

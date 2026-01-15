@@ -4,53 +4,38 @@ import { fetchUpcomingMovies, fetchUpcomingTV } from '../services/tmdbService';
 import { getUpcomingNews } from '../services/geminiService';
 import { Movie } from '../types';
 import MediaCard from '../components/MediaCard';
+import { GridSkeleton } from '../components/Skeleton';
 
 const Upcoming: React.FC = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [tvShows, setTvShows] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingMovies, setLoadingMovies] = useState(true);
+  const [loadingTV, setLoadingTV] = useState(true);
   const [news, setNews] = useState<Record<string, string>>({});
   const [loadingNews, setLoadingNews] = useState(false);
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        // Fetch TMDB data in parallel
-        const [movieRes, tvRes] = await Promise.all([
-          fetchUpcomingMovies(1),
-          fetchUpcomingTV(1)
-        ]);
-        
-        const upcomingMovies = movieRes.results.slice(0, 12);
-        const upcomingTV = tvRes.results.slice(0, 12);
-        
-        setMovies(upcomingMovies);
-        setTvShows(upcomingTV);
-        
-        // Show the grids immediately
-        setLoading(false);
+    // 1. Load Movies
+    fetchUpcomingMovies(1).then(res => {
+      const results = res.results.slice(0, 18);
+      setMovies(results);
+      setLoadingMovies(false);
+      
+      // Trigger news once we have some titles
+      setLoadingNews(true);
+      const titlesToHype = results.slice(0, 6).map(m => ({
+        title: m.title || m.name || '',
+        overview: m.overview || ''
+      }));
+      getUpcomingNews(titlesToHype).then(setNews).finally(() => setLoadingNews(false));
+    });
 
-        // Background AI Hype (Non-blocking)
-        setLoadingNews(true);
-        const titlesToHype = [...upcomingMovies.slice(0, 4), ...upcomingTV.slice(0, 4)].map(m => ({
-          title: m.title || m.name || '',
-          overview: m.overview || ''
-        }));
-        
-        if (titlesToHype.length > 0) {
-          const hypeMap = await getUpcomingNews(titlesToHype);
-          setNews(hypeMap);
-        }
-      } catch (err) {
-        console.error("Failed to load 2026 forecast:", err);
-        setLoading(false);
-      } finally {
-        setLoadingNews(false);
-      }
-    };
+    // 2. Load TV
+    fetchUpcomingTV(1).then(res => {
+      setTvShows(res.results.slice(0, 18));
+      setLoadingTV(false);
+    });
 
-    loadData();
     window.scrollTo(0, 0);
   }, []);
 
@@ -60,17 +45,8 @@ const Upcoming: React.FC = () => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#040404]">
-      <div className="relative flex items-center justify-center">
-        <div className="w-12 h-12 border border-amber-500/10 rounded-full"></div>
-        <div className="absolute w-12 h-12 border-t border-amber-500 rounded-full animate-spin"></div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="pt-24 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
+    <div className="pt-8 md:pt-4 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
       {/* Header Section */}
       <div className="mb-12 md:mb-16">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
@@ -79,7 +55,7 @@ const Upcoming: React.FC = () => {
               <span className={`w-1.5 h-1.5 rounded-full ${loadingNews ? 'bg-amber-500 animate-ping' : 'bg-amber-500'}`}></span>
               <p className="text-amber-500 text-[9px] font-black uppercase tracking-[0.4em]">Future Intelligence</p>
             </div>
-            <h1 className="text-5xl md:text-8xl font-black italic uppercase tracking-tighter leading-none">
+            <h1 className="text-4xl md:text-8xl font-black italic uppercase tracking-tighter leading-none">
               2026 <span className="text-amber-500">Forecast</span>
             </h1>
           </div>
@@ -91,7 +67,7 @@ const Upcoming: React.FC = () => {
         </div>
       </div>
 
-      {/* AI Hype Ticker - Always rendered to prevent jump, shows skeletons while loading */}
+      {/* AI Hype Ticker */}
       <div className="mb-16 md:mb-24 relative">
         <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/10 to-transparent blur-3xl opacity-20"></div>
         <div className="relative bg-[#0a0a0a] border border-amber-500/10 rounded-3xl p-6 md:p-10">
@@ -102,12 +78,10 @@ const Upcoming: React.FC = () => {
               </span>
               <div className="h-[1px] w-12 bg-amber-500/20"></div>
             </div>
-            {!loadingNews && <span className="text-gray-600 text-[8px] font-black uppercase tracking-widest animate-pulse">Data Locked</span>}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
             {loadingNews ? (
-              // Skeleton UI for loading state
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex gap-4 items-start animate-pulse">
                   <div className="w-8 h-8 bg-white/5 rounded-lg shrink-0"></div>
@@ -118,7 +92,6 @@ const Upcoming: React.FC = () => {
                 </div>
               ))
             ) : (
-              // Actual content when ready
               Object.entries(news).map(([title, snippet], idx) => (
                 <div key={idx} className="group flex gap-4 items-start animate-in fade-in duration-500">
                   <div className="text-amber-500/20 font-black italic text-xl shrink-0 group-hover:text-amber-500 transition-colors">
@@ -137,8 +110,8 @@ const Upcoming: React.FC = () => {
         </div>
       </div>
 
-      {/* Movies 2026 */}
-      <section className="mb-20 md:mb-32 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+      {/* Movies 2026 Grid */}
+      <section className="mb-20 md:mb-32">
         <div className="flex items-center gap-6 mb-10 md:mb-16">
           <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter">
             2026 <span className="text-amber-500">Movies</span>
@@ -146,30 +119,34 @@ const Upcoming: React.FC = () => {
           <div className="h-[1px] flex-1 bg-gradient-to-r from-amber-500/20 to-transparent"></div>
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 md:gap-8">
-          {movies.map((item) => (
-            <div key={item.id} className="space-y-4 group">
-              <div className="relative">
-                <MediaCard media={item} />
-                <div className="absolute -bottom-1 -right-1 bg-amber-500 text-black px-2 py-0.5 rounded-sm text-[7px] font-black uppercase tracking-tighter shadow-2xl z-10">
-                  {formatDate(item.release_date || '')}
+        {loadingMovies ? (
+          <GridSkeleton count={8} />
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-5">
+            {movies.map((item) => (
+              <div key={item.id} className="space-y-4 group">
+                <div className="relative">
+                  <MediaCard media={item} />
+                  <div className="absolute -bottom-1 -right-1 bg-amber-500 text-black px-2 py-0.5 rounded-sm text-[7px] font-black uppercase tracking-tighter shadow-2xl z-10">
+                    {formatDate(item.release_date || '')}
+                  </div>
+                </div>
+                <div className="pt-1">
+                   <h4 className="text-white font-black text-[10px] md:text-[11px] uppercase tracking-tight line-clamp-1 group-hover:text-amber-500 transition-colors">
+                    {item.title}
+                   </h4>
+                   <p className="text-gray-600 text-[8px] font-bold line-clamp-2 mt-1 italic leading-tight">
+                    {item.overview || "Deep space broadcast incoming..."}
+                   </p>
                 </div>
               </div>
-              <div className="pt-1">
-                 <h4 className="text-white font-black text-[9px] md:text-[11px] uppercase tracking-tight line-clamp-1 group-hover:text-amber-500 transition-colors">
-                  {item.title}
-                 </h4>
-                 <p className="text-gray-600 text-[8px] font-bold line-clamp-2 mt-1 italic leading-tight">
-                  {item.overview || "Deep space broadcast incoming..."}
-                 </p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* Series 2026 */}
-      <section className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
+      {/* Series 2026 Grid */}
+      <section>
         <div className="flex items-center gap-6 mb-10 md:mb-16">
           <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter text-white">
             2026 <span className="text-amber-500">Series</span>
@@ -177,30 +154,33 @@ const Upcoming: React.FC = () => {
           <div className="h-[1px] flex-1 bg-gradient-to-r from-amber-500/20 to-transparent"></div>
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 md:gap-8">
-          {tvShows.map((item) => (
-            <div key={item.id} className="space-y-4 group">
-              <div className="relative">
-                <MediaCard media={item} />
-                <div className="absolute -bottom-1 -right-1 bg-amber-500 text-black px-2 py-0.5 rounded-sm text-[7px] font-black uppercase tracking-tighter shadow-2xl z-10">
-                  {formatDate(item.first_air_date || '')}
+        {loadingTV ? (
+          <GridSkeleton count={8} />
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-5">
+            {tvShows.map((item) => (
+              <div key={item.id} className="space-y-4 group">
+                <div className="relative">
+                  <MediaCard media={item} />
+                  <div className="absolute -bottom-1 -right-1 bg-amber-500 text-black px-2 py-0.5 rounded-sm text-[7px] font-black uppercase tracking-tighter shadow-2xl z-10">
+                    {formatDate(item.first_air_date || '')}
+                  </div>
+                </div>
+                <div className="pt-1">
+                   <h4 className="text-white font-black text-[10px] md:text-[11px] uppercase tracking-tight line-clamp-1 group-hover:text-amber-500 transition-colors">
+                    {item.name}
+                   </h4>
+                   <p className="text-gray-600 text-[8px] font-bold line-clamp-2 mt-1 italic leading-tight">
+                    {item.overview || "Transmission signal weak but promising..."}
+                   </p>
                 </div>
               </div>
-              <div className="pt-1">
-                 <h4 className="text-white font-black text-[9px] md:text-[11px] uppercase tracking-tight line-clamp-1 group-hover:text-amber-500 transition-colors">
-                  {item.name}
-                 </h4>
-                 <p className="text-gray-600 text-[8px] font-bold line-clamp-2 mt-1 italic leading-tight">
-                  {item.overview || "Transmission signal weak but promising..."}
-                 </p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
       
-      {/* Future Disclaimer */}
-      <div className="mt-24 pt-12 border-t border-white/5 text-center opacity-40">
+      <div className="mt-24 pt-12 border-t border-white/5 text-center opacity-40 pb-12">
         <p className="text-gray-600 text-[8px] font-black uppercase tracking-[0.3em] max-w-xl mx-auto">
           Experimental 2026 data stream. Dates and metadata are projected and subject to change.
         </p>
