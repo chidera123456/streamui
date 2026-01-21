@@ -1,13 +1,13 @@
 
-// ZenStream Service Worker v3.2 - Improved API Fetch Strategy
-const CACHE_NAME = 'zenstream-v8';
+// ZenStream Service Worker v3.3 - Robust API Fetch Strategy
+const CACHE_NAME = 'zenstream-v9';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json'
 ];
 
-// Install: Cache essential app shell
+// Install: Cache app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -17,7 +17,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate: Clean up old caches
+// Activate: Clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -39,15 +39,15 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   
-  // BYPASS Service Worker for TMDB API calls to prevent 'Failed to fetch' errors
-  // API responses are dynamic and handled by in-memory caching in the app
+  // BYPASS: Never intercept TMDB API calls - let the app handle in-memory caching
+  // This resolves the "Failed to fetch" errors in most browser environments
   if (url.hostname.includes('api.themoviedb.org')) {
     return;
   }
 
   const isImage = url.hostname.includes('tmdb.org') || url.hostname.includes('image.tmdb.org');
 
-  // STRATEGY: Cache First for images
+  // Strategy for images: Cache First
   if (isImage) {
     event.respondWith(
       caches.open('zenstream-images').then((cache) => {
@@ -59,14 +59,14 @@ self.addEventListener('fetch', (event) => {
               cache.put(event.request, networkResponse.clone());
             }
             return networkResponse;
-          });
+          }).catch(() => null);
         });
       })
     );
     return;
   }
 
-  // Navigation: Try network, then cache index
+  // Navigation: Try network, fallback to index
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
@@ -76,7 +76,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Generic asset caching (Stale While Revalidate)
+  // Generic assets: Stale-While-Revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {

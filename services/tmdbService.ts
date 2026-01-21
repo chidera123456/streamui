@@ -10,7 +10,7 @@ const handleResponse = async (response: Response, cacheKey?: string) => {
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
     console.error(`TMDB API Error: ${response.status} ${response.statusText}`, errorBody);
-    throw new Error(`TMDB Request failed: ${response.status} - ${response.statusText}`);
+    throw new Error(`TMDB Request failed: ${response.status}`);
   }
   const data = await response.json();
   if (cacheKey) {
@@ -27,7 +27,7 @@ const getFromCache = (key: string) => {
   return null;
 };
 
-// Generic fetch with headers to prevent common fetch failures
+// Use explicit headers to avoid generic fetch failures
 const secureFetch = (url: string) => fetch(url, {
   method: 'GET',
   headers: {

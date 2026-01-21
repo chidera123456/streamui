@@ -8,6 +8,31 @@ import { BACKDROP_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
 import { HeroSkeleton, GridSkeleton } from '../components/Skeleton';
 
+const HorizontalSection: React.FC<{ title: string; subtitle?: string; movies: Movie[]; color?: string }> = ({ title, subtitle, movies, color = "#1ce783" }) => {
+  if (movies.length === 0) return null;
+
+  return (
+    <section className="relative space-y-6">
+      <div className="flex items-end justify-between px-6 md:px-16 border-b border-white/5 pb-4">
+        <div className="space-y-1">
+          {subtitle && <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color }}>{subtitle}</p>}
+          <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">
+            {title.split(' ')[0]} <span style={{ color }}>{title.split(' ').slice(1).join(' ')}</span>
+          </h2>
+        </div>
+      </div>
+      
+      <div className="flex overflow-x-auto gap-4 md:gap-6 px-6 md:px-16 pb-6 hide-scrollbar snap-x snap-mandatory">
+        {movies.map((item) => (
+          <div key={item.id} className="min-w-[140px] md:min-w-[180px] lg:min-w-[200px] snap-start">
+            <MediaCard media={item} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
 const MediaSection: React.FC<{ title: string; subtitle?: string; movies: Movie[]; loading: boolean; color?: string }> = ({ title, subtitle, movies, loading, color = "#1ce783" }) => {
   if (!loading && movies.length === 0) return null;
 
@@ -62,10 +87,8 @@ const Home: React.FC = () => {
     fetchTrending('movie', 1).then(res => {
       if (res?.results && res.results.length > 0) {
         setTrending(res.results);
-        // Filter to ensure we pick a movie with a valid backdrop for the hero section
         const backdropResults = res.results.filter(m => m.backdrop_path);
         const sourceList = backdropResults.length > 0 ? backdropResults : res.results;
-        // Randomize hero selection from the top trending items for variety on reload
         const randomIndex = Math.floor(Math.random() * Math.min(sourceList.length, 12));
         setHero(sourceList[randomIndex]);
       }
@@ -139,14 +162,13 @@ const Home: React.FC = () => {
         </section>
       )}
 
-      {/* Grid Container */}
+      {/* Content Sections */}
       <div className="space-y-16 md:space-y-24 mt-8 md:mt-12 relative z-30">
         
         {history.length > 0 && (
-          <MediaSection 
+          <HorizontalSection 
             title="Continue Watching" 
             movies={history.map(h => h.media_data)} 
-            loading={false} 
             color="#06b6d4" 
           />
         )}
