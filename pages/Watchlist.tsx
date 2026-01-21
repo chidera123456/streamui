@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useWatchlist } from '../hooks/useWatchlist';
 import MediaCard from '../components/MediaCard';
@@ -10,18 +9,18 @@ const Watchlist: React.FC = () => {
   if (loading) {
     return (
       <div className="pt-24 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <div className="w-12 h-12 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin mb-4"></div>
         <p className="text-gray-500 font-black uppercase italic tracking-widest text-xs animate-pulse">Syncing with Cloud...</p>
       </div>
     );
   }
 
   return (
-    <div className="pt-24 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
+    <div className="pt-12 md:pt-32 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
       <div className="mb-12 text-center md:text-left">
         <div className="flex items-center gap-4 mb-4 justify-center md:justify-start">
           <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter">
-            My <span className="text-red-600">Watchlist</span>
+            My <span className="text-[#1ce783]">Watchlist</span>
           </h1>
           <span className="bg-white/5 border border-white/10 px-3 py-1 rounded-full text-[10px] font-bold text-gray-400 uppercase tracking-widest">
             {watchlist.length} Items
@@ -46,7 +45,7 @@ const Watchlist: React.FC = () => {
             </p>
             <Link 
               to="/search" 
-              className="inline-block bg-red-600 hover:bg-red-500 text-white px-10 py-4 rounded-2xl font-black uppercase italic tracking-widest shadow-lg shadow-red-600/20 transition-all active:scale-95"
+              className="inline-block bg-[#1ce783] hover:bg-[#1ce783]/80 text-black px-10 py-4 rounded-2xl font-black uppercase italic tracking-widest shadow-lg shadow-[#1ce783]/20 transition-all active:scale-95"
             >
               Start Discovering
             </Link>

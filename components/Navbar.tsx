@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -8,116 +7,61 @@ const Navbar: React.FC = () => {
   const { user, openAuthModal, openProfileModal } = useAuth();
   
   const isActive = (path: string) => location.pathname === path;
-
-  const rawUsername = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
-  const username = String(rawUsername);
-  const initial = username.length > 0 ? username.charAt(0) : 'U';
+  const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
+  const initial = String(username).charAt(0).toUpperCase();
 
   const navLinks = [
-    { 
-      path: '/', 
-      label: 'Home', 
-      activeClass: 'text-[#1ce783]',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      )
-    },
-    { 
-      path: '/search', 
-      label: 'Search', 
-      activeClass: 'text-[#1ce783]',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      )
-    },
-    { 
-      path: '/anime', 
-      label: 'Anime', 
-      activeClass: 'text-cyan-400',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-      )
-    },
-    { 
-      path: '/watchlist', 
-      label: 'My List', 
-      activeClass: 'text-[#1ce783]',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-      )
-    }
+    { path: '/', label: 'Home' },
+    { path: '/search', label: 'Search' },
+    { path: '/anime', label: 'Anime' },
+    { path: '/watchlist', label: 'My List' }
   ];
 
-  return (
-    <nav className="fixed bottom-0 md:top-0 left-0 right-0 h-16 md:h-20 bg-[#040404]/95 backdrop-blur-2xl border-t md:border-t-0 md:border-b border-white/10 z-50 px-2 md:px-12 flex items-center justify-between pb-safe">
-      {/* Brand - Desktop Only */}
-      <Link to="/" className="hidden md:flex items-center gap-3 group shrink-0">
-        <div className="w-10 h-10 rounded-full bg-[#1ce783] flex items-center justify-center transition-transform duration-500 group-hover:scale-110 shadow-lg shadow-[#1ce783]/20">
-          <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5 ml-1">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        </div>
-        <span className="text-white font-black text-2xl tracking-tighter uppercase italic">
-          ZEN<span className="text-[#1ce783]">STREAM</span>
-        </span>
-      </Link>
-      
-      {/* Navigation Links - Centered/Spread */}
-      <div className="flex items-center justify-around md:justify-center gap-0 md:gap-8 flex-1 px-1">
-        {navLinks.map((link) => (
-          <Link 
-            key={link.path}
-            to={link.path} 
-            className={`transition-all duration-300 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 flex-1 md:flex-none ${isActive(link.path) ? link.activeClass : 'text-gray-500 hover:text-white'}`}
-          >
-            <span className="block transform active:scale-90 transition-transform">
-              {link.icon}
-            </span>
-            <span className="hidden md:block text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
-              {link.label}
-            </span>
-            {isActive(link.path) && <span className="md:hidden w-1 h-1 rounded-full bg-current"></span>}
-          </Link>
-        ))}
+  // Mobile: Only show the top bar (Logo) on the Home page.
+  // Other pages like Search/Anime/Watchlist have their own titles and the bottom nav.
+  const isHomePage = location.pathname === '/';
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-        {/* Profile/Auth Button - Mobile */}
-        <div className="flex flex-col items-center justify-center gap-1 flex-1 md:hidden">
-          {user ? (
-            <button 
-              onClick={openProfileModal}
-              className="flex items-center justify-center transform active:scale-90 transition-transform"
+  // On mobile, if we are not on Home, we hide the top bar to keep it clean.
+  if (isMobile && !isHomePage) return null;
+
+  return (
+    <nav className="absolute top-0 left-0 right-0 h-16 md:h-24 z-50 px-6 md:px-16 flex items-center justify-between pointer-events-none">
+      <div className="flex items-center gap-12 pointer-events-auto">
+        <Link to="/" className="flex items-center gap-2 group shrink-0">
+          <span className="text-white font-black text-xl md:text-3xl tracking-tighter uppercase italic drop-shadow-lg">
+            ZEN<span className="text-[#1ce783]">STREAM</span>
+          </span>
+        </Link>
+        
+        <div className="hidden md:flex items-center gap-8">
+          {navLinks.map((link) => (
+            <Link 
+              key={link.path}
+              to={link.path} 
+              className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all hover:text-white ${isActive(link.path) ? 'text-[#1ce783]' : 'text-white/40'}`}
             >
-              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-[9px] font-black uppercase text-black ring-2 ring-white/10">
-                {initial}
-              </div>
-            </button>
-          ) : (
-            <button 
-              onClick={openAuthModal}
-              className="text-gray-500 hover:text-white transform active:scale-90 transition-transform"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            </button>
-          )}
+              {link.label}
+            </Link>
+          ))}
         </div>
       </div>
 
-      {/* Profile/Auth Button - Desktop */}
-      <div className="hidden md:flex items-center shrink-0 ml-4">
+      <div className="hidden md:flex items-center gap-6 pointer-events-auto">
         {user ? (
           <button 
             onClick={openProfileModal}
-            className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-full transition-all group"
+            className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 p-1 pr-5 pl-2 rounded-full transition-all group"
           >
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Profile</span>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-xs font-black uppercase text-black">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-sm font-black uppercase text-black">
               {initial}
             </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Profile</span>
           </button>
         ) : (
           <button 
             onClick={openAuthModal}
-            className="bg-white text-black hover:bg-[#1ce783] px-8 py-2.5 rounded-sm text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-white/5"
+            className="bg-white text-black hover:bg-[#1ce783] px-10 py-3 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-2xl"
           >
             Sign In
           </button>

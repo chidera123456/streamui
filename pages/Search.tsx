@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { searchMedia, discoverMedia, fetchGenres } from '../services/tmdbService';
 import { getCorrectedQuery } from '../services/geminiService';
@@ -162,7 +161,7 @@ const Search: React.FC = () => {
   };
 
   return (
-    <div className="pt-8 md:pt-4 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
+    <div className="pt-12 md:pt-32 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
       <div className="mb-8 md:mb-12 text-center">
         <h1 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter mb-2 md:mb-4">
           Search <span className="text-[#1ce783]">Engine</span>
