@@ -1,6 +1,6 @@
 
-// ZenStream Service Worker v3.1 - Zero-Flicker Image Strategy
-const CACHE_NAME = 'zenstream-v7';
+// ZenStream Service Worker v3.2 - Improved API Fetch Strategy
+const CACHE_NAME = 'zenstream-v8';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -33,24 +33,29 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Fetch: Ultra-aggressive for images
+// Fetch handler
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+  
+  // BYPASS Service Worker for TMDB API calls to prevent 'Failed to fetch' errors
+  // API responses are dynamic and handled by in-memory caching in the app
+  if (url.hostname.includes('api.themoviedb.org')) {
+    return;
+  }
+
   const isImage = url.hostname.includes('tmdb.org') || url.hostname.includes('image.tmdb.org');
 
-  // STRATEGY: Cache First with forced immutability for images
+  // STRATEGY: Cache First for images
   if (isImage) {
     event.respondWith(
       caches.open('zenstream-images').then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {
-          // If in cache, return immediately (Zero latency)
           if (cachedResponse) return cachedResponse;
           
           return fetch(event.request).then((networkResponse) => {
             if (networkResponse.status === 200) {
-              // Clone and store for next time
               cache.put(event.request, networkResponse.clone());
             }
             return networkResponse;
@@ -61,7 +66,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation: Try network, then cache
+  // Navigation: Try network, then cache index
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useWatchlist } from '../hooks/useWatchlist';
 import MediaCard from '../components/MediaCard';
@@ -6,11 +7,13 @@ import { Link } from 'react-router-dom';
 const Watchlist: React.FC = () => {
   const { watchlist, loading } = useWatchlist();
 
-  if (loading) {
+  // Only show a full-page loader if we have NO data and we are currently loading.
+  // If we have cached data, we show it instantly even while 'loading' is true in the background.
+  if (loading && watchlist.length === 0) {
     return (
       <div className="pt-24 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-500 font-black uppercase italic tracking-widest text-xs animate-pulse">Syncing with Cloud...</p>
+        <p className="text-gray-500 font-black uppercase italic tracking-widest text-xs animate-pulse">Syncing Cloud...</p>
       </div>
     );
   }
@@ -26,7 +29,7 @@ const Watchlist: React.FC = () => {
             {watchlist.length} Items
           </span>
         </div>
-        <p className="text-gray-400">Everything you've saved is now synced across your devices.</p>
+        <p className="text-gray-400">Your collection is synced instantly across all your devices.</p>
       </div>
 
       {watchlist.length > 0 ? (

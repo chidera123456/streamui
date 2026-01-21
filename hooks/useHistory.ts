@@ -4,29 +4,29 @@ import { Movie, HistoryItem } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase';
 
-const STORAGE_KEY = 'zenstream_watch_history_v2';
+const HISTORY_CACHE_KEY = 'zenstream_history_cache_v3';
 const MAX_HISTORY = 20;
 
 export const useHistory = () => {
   const { user } = useAuth();
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>(() => {
+    // Immediate load from local cache
+    const cached = localStorage.getItem(HISTORY_CACHE_KEY);
+    return cached ? JSON.parse(cached) : [];
+  });
   const [loading, setLoading] = useState(true);
+
+  // Persistence effect
+  useEffect(() => {
+    localStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(history));
+  }, [history]);
 
   const fetchHistory = useCallback(async () => {
     if (!user) {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          setHistory(JSON.parse(stored));
-        } catch (e) {
-          setHistory([]);
-        }
-      }
       setLoading(false);
       return;
     }
 
-    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('watch_history')
@@ -37,8 +37,7 @@ export const useHistory = () => {
 
       if (error) throw error;
       
-      // Transform Supabase data to HistoryItem type
-      const items: HistoryItem[] = (data || []).map(item => ({
+      const cloudItems: HistoryItem[] = (data || []).map(item => ({
         id: item.id,
         user_id: item.user_id,
         media_id: item.media_id,
@@ -49,42 +48,54 @@ export const useHistory = () => {
         episode: item.episode
       }));
       
-      setHistory(items);
+      // Update local state if cloud data differs
+      if (JSON.stringify(cloudItems) !== JSON.stringify(history)) {
+        setHistory(cloudItems);
+      }
     } catch (err) {
       console.error("Failed to fetch cloud history:", err);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, history]);
 
   useEffect(() => {
     fetchHistory();
-  }, [fetchHistory]);
+    
+    // Subscribe to realtime history updates
+    if (user) {
+      const channel = supabase.channel(`public:watch_history:user=${user.id}`)
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'watch_history',
+          filter: `user_id=eq.${user.id}`
+        }, () => fetchHistory())
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [user, fetchHistory]);
 
   const addToHistory = async (movie: Movie, season?: number, episode?: number) => {
     const now = new Date().toISOString();
 
-    // 1. Optimistic UI update
+    // Optimistic UI update: Immediate feedback
+    const newItem: HistoryItem = {
+      id: `local-${movie.id}-${Date.now()}`,
+      user_id: user?.id || 'local-user',
+      media_id: movie.id,
+      media_type: movie.media_type,
+      media_data: movie,
+      last_watched_at: now,
+      season,
+      episode
+    };
+
     setHistory(prev => {
       const filtered = prev.filter(h => h.media_id !== movie.id);
-      const newItem: HistoryItem = {
-        id: `temp-${movie.id}-${Date.now()}`,
-        user_id: user?.id || 'local-user',
-        media_id: movie.id,
-        media_type: movie.media_type,
-        media_data: movie,
-        last_watched_at: now,
-        season,
-        episode
-      };
-      const updated = [newItem, ...filtered].slice(0, MAX_HISTORY);
-      if (!user) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      }
-      return updated;
+      return [newItem, ...filtered].slice(0, MAX_HISTORY);
     });
 
-    // 2. Cloud Sync
     if (user) {
       try {
         const { error } = await supabase
@@ -101,7 +112,7 @@ export const useHistory = () => {
             onConflict: 'user_id, media_id' 
           });
 
-        if (error) console.error("Sync history failed:", error.message);
+        if (error) console.error("Cloud sync history failed:", error.message);
       } catch (err) {
         console.error("Critical history sync error:", err);
       }
@@ -111,18 +122,12 @@ export const useHistory = () => {
   const clearHistory = async () => {
     setHistory([]);
     if (!user) {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(HISTORY_CACHE_KEY);
     } else {
       try {
-        const { error } = await supabase
-          .from('watch_history')
-          .delete()
-          .eq('user_id', user.id);
-        
-        if (error) throw error;
+        await supabase.from('watch_history').delete().eq('user_id', user.id);
       } catch (err) {
         console.error("Failed to clear cloud history:", err);
-        fetchHistory(); // Revert on failure
       }
     }
   };
