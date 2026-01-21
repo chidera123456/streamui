@@ -1,6 +1,7 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import App from './App.tsx';
 
 // Global error handling for debugging deployment issues
 window.onerror = function(message, source, lineno, colno, error) {

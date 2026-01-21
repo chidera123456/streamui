@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AISuggestion, Comment } from "../types";
+import { AISuggestion, Comment } from "../types.ts";
 
 const getAIClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 

@@ -1,19 +1,21 @@
+
 import React, { lazy, Suspense } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import MobileNav from './components/MobileNav';
-import AuthModal from './components/AuthModal';
-import ProfileModal from './components/ProfileModal';
-import { AuthProvider } from './context/AuthContext';
-import { HeroSkeleton } from './components/Skeleton';
+import Navbar from './components/Navbar.tsx';
+import MobileNav from './components/MobileNav.tsx';
+import AuthModal from './components/AuthModal.tsx';
+import ProfileModal from './components/ProfileModal.tsx';
+import { AuthProvider } from './context/AuthContext.tsx';
+import { HeroSkeleton } from './components/Skeleton.tsx';
 
-const Home = lazy(() => import('./pages/Home'));
-const Search = lazy(() => import('./pages/Search'));
-const Anime = lazy(() => import('./pages/Anime'));
-const Watchlist = lazy(() => import('./pages/Watchlist'));
-const Details = lazy(() => import('./pages/Details'));
-const Profile = lazy(() => import('./pages/Profile'));
-const Upcoming = lazy(() => import('./pages/Upcoming'));
+const Home = lazy(() => import('./pages/Home.tsx'));
+const Search = lazy(() => import('./pages/Search.tsx'));
+const Anime = lazy(() => import('./pages/Anime.tsx'));
+const Watchlist = lazy(() => import('./pages/Watchlist.tsx'));
+const Details = lazy(() => import('./pages/Details.tsx'));
+const Profile = lazy(() => import('./pages/Profile.tsx'));
+const Upcoming = lazy(() => import('./pages/Upcoming.tsx'));
+const AISuggest = lazy(() => import('./pages/AISuggest.tsx'));
 
 const App: React.FC = () => {
   return (
@@ -31,6 +33,7 @@ const App: React.FC = () => {
                 <Route path="/upcoming" element={<Upcoming />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/anime" element={<Anime />} />
+                <Route path="/ai-discovery" element={<AISuggest />} />
                 <Route path="/watchlist" element={<Watchlist />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/details/:type/:id" element={<Details />} />

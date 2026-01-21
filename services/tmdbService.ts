@@ -1,6 +1,6 @@
 
-import { TMDB_API_KEY, TMDB_BASE_URL } from '../constants';
-import { Movie, Episode } from '../types';
+import { TMDB_API_KEY, TMDB_BASE_URL } from '../constants.ts';
+import { Movie, Episode } from '../types.ts';
 
 // Extended in-memory cache for ultra-smooth navigation
 const cache = new Map<string, { data: any; timestamp: number }>();
