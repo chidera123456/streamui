@@ -1,17 +1,19 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { Link } from 'react-router-dom';
 
 const ProfileModal: React.FC = () => {
-  const { user, isProfileModalOpen, closeProfileModal, logout, updateProfile } = useAuth();
+  const { user, isProfileModalOpen, closeProfileModal, logout, updateProfile, uploadAvatar, deleteAvatar } = useAuth();
   const { watchlist } = useWatchlist();
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [updateLoading, setUpdateLoading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
@@ -35,6 +37,45 @@ const ProfileModal: React.FC = () => {
     await logout();
   };
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleDeleteAvatar = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Remove your profile picture?")) return;
+    
+    setUploadingAvatar(true);
+    const res = await deleteAvatar();
+    if (res.success) {
+      setMessage({ type: 'success', text: 'Picture removed.' });
+    } else {
+      setMessage({ type: 'error', text: res.message });
+    }
+    setUploadingAvatar(false);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    setMessage(null);
+
+    const res = await uploadAvatar(file);
+    if (res.success && res.url) {
+      const updateRes = await updateProfile({ avatar_url: res.url });
+      if (updateRes.success) {
+        setMessage({ type: 'success', text: 'Avatar updated successfully.' });
+      } else {
+        setMessage({ type: 'error', text: updateRes.message });
+      }
+    } else {
+      setMessage({ type: 'error', text: res.message });
+    }
+    setUploadingAvatar(false);
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername.trim()) return;
@@ -45,7 +86,7 @@ const ProfileModal: React.FC = () => {
     const res = await updateProfile({ username: newUsername });
     
     if (res.success) {
-      setMessage({ type: 'success', text: 'Identity synced across all comments.' });
+      setMessage({ type: 'success', text: 'Identity synced successfully.' });
       setTimeout(() => {
         setIsEditing(false);
         setMessage(null);
@@ -67,6 +108,7 @@ const ProfileModal: React.FC = () => {
   };
 
   const username = String(user.user_metadata?.username || user.email?.split('@')[0] || 'User');
+  const avatarUrl = user.user_metadata?.avatar_url;
   const initial = username.length > 0 ? username.charAt(0) : 'U';
   
   const joinedDate = user.created_at 
@@ -96,15 +138,59 @@ const ProfileModal: React.FC = () => {
           <div className="absolute inset-0 bg-black/20"></div>
           <button 
             onClick={() => { closeProfileModal(); setIsEditing(false); }}
-            className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors p-2 bg-black/20 rounded-full backdrop-blur-md"
+            className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors p-2 bg-black/20 rounded-full backdrop-blur-md z-20"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept="image/*" 
+            onChange={handleFileChange} 
+          />
+
           <div className="absolute -bottom-10 left-8 p-1 bg-[#141414] rounded-full border-4 border-[#141414] shadow-xl">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-3xl font-black uppercase italic tracking-tighter text-black">
-              {initial}
+            <div className="relative group">
+              <button 
+                onClick={handleAvatarClick}
+                disabled={uploadingAvatar}
+                className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-3xl font-black uppercase italic tracking-tighter text-black"
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={username} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                ) : (
+                  initial
+                )}
+                
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+
+                {uploadingAvatar && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+              </button>
+              
+              {avatarUrl && !uploadingAvatar && (
+                <button 
+                  onClick={handleDeleteAvatar}
+                  className="absolute -top-1 -right-1 bg-red-600 text-white p-1 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                  title="Remove Picture"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -132,7 +218,7 @@ const ProfileModal: React.FC = () => {
                 </>
               ) : (
                 <form onSubmit={handleUpdate} className="space-y-3">
-                   <label className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Update Alias</label>
+                   <label className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Update Name</label>
                    <div className="flex flex-col gap-3">
                      <input 
                        autoFocus
@@ -140,7 +226,7 @@ const ProfileModal: React.FC = () => {
                        value={newUsername}
                        onChange={(e) => setNewUsername(e.target.value)}
                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-[#1ce783] transition-all font-bold"
-                       placeholder="New Username"
+                       placeholder="Enter Name"
                      />
                      <div className="flex items-center gap-2">
                        <button 
@@ -148,7 +234,7 @@ const ProfileModal: React.FC = () => {
                          disabled={updateLoading}
                          className="bg-[#1ce783] text-black px-6 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all disabled:opacity-50"
                        >
-                         {updateLoading ? 'Syncing...' : 'Save & Sync'}
+                         {updateLoading ? 'Syncing...' : 'Save Changes'}
                        </button>
                        <button 
                          type="button"
@@ -159,13 +245,13 @@ const ProfileModal: React.FC = () => {
                        </button>
                      </div>
                    </div>
-                   {message && (
-                     <p className={`text-[10px] font-black uppercase tracking-widest mt-2 ${message.type === 'success' ? 'text-[#1ce783]' : 'text-red-500'}`}>
-                       {message.text}
-                     </p>
-                   )}
                 </form>
               )}
+              {message && (
+                 <p className={`text-[10px] font-black uppercase tracking-widest mt-2 ${message.type === 'success' ? 'text-[#1ce783]' : 'text-red-500'}`}>
+                   {message.text}
+                 </p>
+               )}
             </div>
             <div className="flex items-center gap-2">
               {deferredPrompt && (

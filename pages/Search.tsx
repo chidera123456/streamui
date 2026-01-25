@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { searchMedia, discoverMedia, fetchGenres } from '../services/tmdbService';
 import { getCorrectedQuery } from '../services/geminiService';
@@ -62,7 +63,7 @@ const Search: React.FC = () => {
       }, 400);
     } else {
       setSuggestions([]);
-      if (query.trim().length === 0) {
+      if (query.trim().length === 0 && !selectedGenre && !selectedYear && minRating === 0) {
         setResults([]);
         setCorrectedQuery(null);
       }
@@ -72,6 +73,14 @@ const Search: React.FC = () => {
       if (searchTimeout.current) window.clearTimeout(searchTimeout.current);
     };
   }, [query, type]);
+
+  // Auto-trigger search when genre changes
+  useEffect(() => {
+    if (selectedGenre) {
+      setQuery(''); // Clear text search to prioritize genre discovery
+      triggerSearch(1, false, false, '');
+    }
+  }, [selectedGenre]);
 
   const triggerSearch = async (pageNum: number = 1, isLoadMore: boolean = false, isSilent: boolean = false, searchQuery: string = query) => {
     if (!isLoadMore && !isSilent) {
@@ -149,6 +158,10 @@ const Search: React.FC = () => {
     triggerSearch(1, false, false, h);
   };
 
+  const handleGenreClick = (genreId: number) => {
+    setSelectedGenre(selectedGenre === genreId ? null : genreId);
+  };
+
   const clearFilters = () => {
     setSelectedGenre(null);
     setSelectedYear('');
@@ -166,8 +179,8 @@ const Search: React.FC = () => {
         <h1 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter mb-2 md:mb-4">
           Search <span className="text-[#1ce783]">Engine</span>
         </h1>
-        <p className="text-gray-500 uppercase text-[8px] md:text-[10px] font-black tracking-[0.3em] min-h-[1em]">
-          {isCorrecting ? 'AI Refining Search...' : ''}
+        <p className="text-gray-500 uppercase text-[8px] md:text-[10px] font-black tracking-[0.4em] min-h-[1em]">
+          {isCorrecting ? 'AI Refining Search...' : 'Discover your next favorite story'}
         </p>
       </div>
 
@@ -185,7 +198,7 @@ const Search: React.FC = () => {
                   setHasMore(false);
                   setCorrectedQuery(null);
                 }}
-                className={`px-5 md:px-8 py-2 md:py-2.5 rounded-sm text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`px-5 md:px-8 py-2 md:py-2.5 rounded-sm text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all transform-gpu active:scale-95 ${
                   type === t 
                     ? 'bg-[#1ce783] text-black shadow-[0_0_20px_rgba(28,231,131,0.3)]' 
                     : 'bg-white/5 text-gray-400 hover:text-white border border-white/5'
@@ -202,7 +215,10 @@ const Search: React.FC = () => {
                 type="text"
                 value={query}
                 onFocus={() => setShowDropdown(true)}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  if (e.target.value.trim()) setSelectedGenre(null); // Clear genre if typing
+                }}
                 placeholder="Title, genre, or description..."
                 className="w-full bg-[#111] border-b-2 border-white/10 px-0 py-3 md:py-4 text-lg md:text-xl outline-none focus:border-[#1ce783] transition-all"
               />
@@ -305,7 +321,7 @@ const Search: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
-                className={`p-3 md:p-4 rounded-full transition-all flex items-center justify-center ${showFilters ? 'text-[#1ce783]' : 'text-gray-500 hover:text-white'}`}
+                className={`p-3 md:p-4 rounded-full transition-all flex items-center justify-center transform-gpu active:scale-90 ${showFilters ? 'text-[#1ce783]' : 'text-gray-500 hover:text-white'}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -315,7 +331,7 @@ const Search: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading || isCorrecting}
-                className="flex-1 md:flex-none bg-white hover:bg-[#1ce783] text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-base uppercase tracking-widest transition-all"
+                className="flex-1 md:flex-none bg-white hover:bg-[#1ce783] text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-base uppercase tracking-widest transition-all transform-gpu active:scale-95 shadow-2xl"
               >
                 {loading || isCorrecting ? '...' : 'Search'}
               </button>
@@ -323,27 +339,70 @@ const Search: React.FC = () => {
           </div>
         </form>
 
+        {/* Quick Genre Selection Bar */}
+        {type !== 'all' && (
+          <div className="pt-2 animate-in fade-in duration-500">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <span className="text-[9px] font-black uppercase text-gray-500 tracking-[0.2em]">Explore Categories</span>
+              {selectedGenre && (
+                <button 
+                  onClick={() => setSelectedGenre(null)}
+                  className="text-[9px] font-black uppercase text-[#1ce783] hover:text-white transition-colors"
+                >
+                  Clear Genre
+                </button>
+              )}
+            </div>
+            <div className="flex overflow-x-auto gap-2 pb-4 hide-scrollbar snap-x">
+              {genres.length > 0 ? (
+                genres.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => handleGenreClick(g.id)}
+                    className={`shrink-0 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all transform-gpu active:scale-95 snap-start border ${
+                      selectedGenre === g.id 
+                        ? 'bg-[#1ce783] border-[#1ce783] text-black shadow-lg shadow-[#1ce783]/20' 
+                        : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:border-white/10'
+                    }`}
+                  >
+                    {g.name}
+                  </button>
+                ))
+              ) : (
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="w-20 h-8 bg-white/5 rounded-full animate-pulse"></div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {showFilters && (
-          <div className="bg-[#0c0c0c] border border-white/5 rounded-sm p-5 md:p-8 space-y-6 md:space-y-8">
+          <div className="bg-[#0c0c0c] border border-white/5 rounded-2xl p-6 md:p-8 space-y-6 md:space-y-8 shadow-2xl animate-in slide-in-from-top-4 duration-300">
             <div className="flex items-center justify-between">
-              <h3 className="text-[8px] md:text-[10px] font-black uppercase text-[#1ce783] tracking-widest">Advanced Filters</h3>
-              <button onClick={clearFilters} className="text-[8px] md:text-[10px] font-black uppercase text-gray-500 hover:text-white transition-colors">Reset</button>
+              <h3 className="text-[10px] font-black uppercase text-[#1ce783] tracking-widest">Global Parameters</h3>
+              <button onClick={clearFilters} className="text-[10px] font-black uppercase text-gray-500 hover:text-white transition-colors">Reset All</button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
               <div className="space-y-6">
                 <div>
-                  <label className="block text-[8px] md:text-[10px] font-black text-gray-500 uppercase mb-2 md:mb-3">Release Year</label>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase mb-3">Release Year</label>
                   <input 
                     type="number" 
                     placeholder="YYYY"
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
-                    className="w-full bg-white/5 border-b border-white/10 py-2 md:py-3 outline-none focus:border-[#1ce783] transition-colors text-sm md:text-base"
+                    className="w-full bg-white/5 border-b border-white/10 py-3 outline-none focus:border-[#1ce783] transition-colors text-sm md:text-base font-bold"
                   />
                 </div>
-                <div>
-                  <label className="block text-[8px] md:text-[10px] font-black text-gray-500 uppercase mb-2 md:mb-3 text-white">Min Rating ({minRating})</label>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase mb-3">Minimum Rating: <span className="text-[#1ce783] font-black">{minRating}</span></label>
+                <div className="pt-2 px-1">
                   <input 
                     type="range" 
                     min="0" 
@@ -353,29 +412,10 @@ const Search: React.FC = () => {
                     onChange={(e) => setMinRating(parseFloat(e.target.value))}
                     className="w-full accent-[#1ce783] bg-white/10 h-1.5 rounded-full appearance-none cursor-pointer"
                   />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[8px] md:text-[10px] font-black text-gray-500 uppercase mb-2 md:mb-3">Genre Focus</label>
-                <div className="flex flex-wrap gap-2 max-h-[120px] md:max-h-[140px] overflow-y-auto pr-2 custom-scrollbar">
-                  {genres.length > 0 ? (
-                    genres.map((g) => (
-                      <button
-                        key={g.id}
-                        onClick={() => setSelectedGenre(selectedGenre === g.id ? null : g.id)}
-                        className={`px-2.5 md:px-3 py-1 md:py-1.5 rounded-sm text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all border ${
-                          selectedGenre === g.id 
-                            ? 'bg-[#1ce783] border-[#1ce783] text-black' 
-                            : 'bg-white/5 border-white/5 text-gray-500 hover:border-white/20'
-                        }`}
-                      >
-                        {g.name}
-                      </button>
-                    ))
-                  ) : (
-                    <p className="text-[8px] md:text-[10px] text-gray-600 italic">Select Movie/TV above</p>
-                  )}
+                  <div className="flex justify-between mt-2 text-[9px] font-black text-gray-600 uppercase">
+                    <span>Any</span>
+                    <span>10.0</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -384,22 +424,23 @@ const Search: React.FC = () => {
       </div>
 
       {correctedQuery && results.length > 0 && (
-        <div className="max-w-3xl mx-auto mb-6 p-3 bg-[#1ce783]/5 border border-[#1ce783]/10 rounded-lg animate-in fade-in slide-in-from-top-1">
-          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-            Showing results for <span className="text-[#1ce783] italic">"{correctedQuery}"</span> instead of "{query}"
+        <div className="max-w-3xl mx-auto mb-6 p-4 bg-[#1ce783]/5 border border-[#1ce783]/10 rounded-xl animate-in fade-in slide-in-from-top-1">
+          <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+            Did you mean <span className="text-[#1ce783] italic">"{correctedQuery}"</span>? Showing results for the refined query.
           </p>
         </div>
       )}
 
       {loading && results.length === 0 && (
-        <div className="flex justify-center py-20">
-           <div className="w-10 h-10 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+           <div className="w-12 h-12 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
+           <p className="text-[10px] font-black uppercase tracking-widest text-gray-600 animate-pulse">Scanning Archive...</p>
         </div>
       )}
 
       {results.length > 0 && (
         <div className="space-y-12 animate-in fade-in duration-700">
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 md:gap-5">
             {results.map((item, index) => (
               <MediaCard key={`${item.media_type}-${item.id}-${index}`} media={item} />
             ))}
@@ -410,20 +451,48 @@ const Search: React.FC = () => {
               <button
                 onClick={() => triggerSearch(page + 1, true)}
                 disabled={loadingMore}
-                className="bg-white/5 hover:bg-white/10 border border-white/10 px-10 md:px-12 py-3 md:py-4 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all"
+                className="bg-white/5 hover:bg-white/10 border border-white/10 px-10 md:px-12 py-3 md:py-4 rounded-full text-[10px] font-black uppercase tracking-widest transition-all transform-gpu active:scale-95"
               >
-                {loadingMore ? 'Loading More...' : 'Load More'}
+                {loadingMore ? 'Streaming Data...' : 'Load More Results'}
               </button>
             </div>
           )}
         </div>
       )}
 
-      {!loading && !isCorrecting && results.length === 0 && query.length > 0 && (
-        <div className="text-center py-32 space-y-4">
-          <div className="text-4xl">🛸</div>
-          <h2 className="text-xl font-black uppercase italic tracking-tighter">No signal detected</h2>
-          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">The cinematic universe is vast, but we couldn't find a match.</p>
+      {!loading && !isCorrecting && results.length === 0 && (query.length > 0 || selectedGenre) && (
+        <div className="text-center py-32 space-y-6">
+          <div className="text-6xl animate-bounce">🛰️</div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white">No Results Found</h2>
+            <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest max-w-xs mx-auto leading-relaxed">
+              Try adjusting your filters or searching for something broader.
+            </p>
+          </div>
+          <button 
+            onClick={clearFilters}
+            className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1ce783] border border-[#1ce783]/30 px-6 py-2 rounded-full hover:bg-[#1ce783] hover:text-black transition-all"
+          >
+            Clear All Search Params
+          </button>
+        </div>
+      )}
+      
+      {!loading && results.length === 0 && !query && !selectedGenre && (
+        <div className="text-center py-32">
+          <div className="max-w-md mx-auto space-y-8">
+            <p className="text-gray-500 text-[11px] font-black uppercase tracking-[0.4em] opacity-40">Discovery Mode</p>
+            <div className="grid grid-cols-2 gap-4">
+              <button onClick={() => { setType('movie'); triggerSearch(1, false, false, 'Action'); }} className="bg-white/5 border border-white/5 p-6 rounded-3xl hover:border-[#1ce783]/30 transition-all group">
+                <span className="block text-2xl mb-2 group-hover:scale-110 transition-transform">🔥</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Trending Movies</span>
+              </button>
+              <button onClick={() => { setType('tv'); triggerSearch(1, false, false, 'Drama'); }} className="bg-white/5 border border-white/5 p-6 rounded-3xl hover:border-[#1ce783]/30 transition-all group">
+                <span className="block text-2xl mb-2 group-hover:scale-110 transition-transform">📺</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Must-Watch TV</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

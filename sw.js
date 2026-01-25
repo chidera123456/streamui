@@ -1,6 +1,7 @@
 
-// ZenStream Service Worker v3.3 - Robust API Fetch Strategy
-const CACHE_NAME = 'zenstream-v9';
+// ZenStream Service Worker v3.7 - High Performance Update
+const CACHE_NAME = 'zenstream-v12';
+const IMAGE_CACHE_NAME = 'zenstream-images-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -23,7 +24,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((name) => {
-          if (name !== CACHE_NAME && name !== 'zenstream-images') {
+          if (name !== CACHE_NAME && name !== IMAGE_CACHE_NAME) {
             return caches.delete(name);
           }
         })
@@ -39,34 +40,44 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   
-  // BYPASS: Never intercept TMDB API calls - let the app handle in-memory caching
-  // This resolves the "Failed to fetch" errors in most browser environments
-  if (url.hostname.includes('api.themoviedb.org')) {
+  // BYPASS LIST: Third-party APIs and dynamic content providers
+  const isBypassed = 
+    url.hostname.includes('api.themoviedb.org') || 
+    url.hostname.includes('generativelanguage.googleapis.com') ||
+    url.hostname.includes('supabase.co') ||
+    url.hostname.includes('vidsrc.cc') ||
+    url.hostname.includes('vidsrc.to') ||
+    url.hostname.includes('vidsrc.me') ||
+    url.hostname.includes('vidsrc.xyz');
+
+  if (isBypassed) {
     return;
   }
 
   const isImage = url.hostname.includes('tmdb.org') || url.hostname.includes('image.tmdb.org');
 
-  // Strategy for images: Cache First
+  // Strategy for images: Cache First, then Network
   if (isImage) {
     event.respondWith(
-      caches.open('zenstream-images').then((cache) => {
+      caches.open(IMAGE_CACHE_NAME).then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {
           if (cachedResponse) return cachedResponse;
           
-          return fetch(event.request).then((networkResponse) => {
-            if (networkResponse.status === 200) {
+          return fetch(event.request, { mode: 'no-cors' }).then((networkResponse) => {
+            if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
               cache.put(event.request, networkResponse.clone());
             }
             return networkResponse;
-          }).catch(() => null);
+          }).catch(() => {
+            return new Response(null, { status: 404 });
+          });
         });
       })
     );
     return;
   }
 
-  // Navigation: Try network, fallback to index
+  // Navigation: Network First, Fallback to SPA shell
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
@@ -87,7 +98,9 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
-      }).catch(() => null);
+      }).catch(() => {
+        return cachedResponse;
+      });
 
       return cachedResponse || fetchPromise;
     })

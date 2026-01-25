@@ -21,7 +21,7 @@ export const useHistory = () => {
     localStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(history));
   }, [history]);
 
-  const fetchHistory = useCallback(async () => {
+  const fetchHistory = useCallback(async (isMounted: boolean = true) => {
     if (!user) {
       setLoading(false);
       return;
@@ -35,7 +35,12 @@ export const useHistory = () => {
         .order('last_watched_at', { ascending: false })
         .limit(MAX_HISTORY);
 
-      if (error) throw error;
+      if (!isMounted) return;
+
+      if (error) {
+        if (error.message?.includes('aborted') || error.name === 'AbortError') return;
+        throw error;
+      }
       
       const cloudItems: HistoryItem[] = (data || []).map(item => ({
         id: item.id,
@@ -52,28 +57,36 @@ export const useHistory = () => {
       if (JSON.stringify(cloudItems) !== JSON.stringify(history)) {
         setHistory(cloudItems);
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (!isMounted) return;
+      if (err.name === 'AbortError' || err.message?.includes('aborted') || err.message?.includes('Failed to fetch')) return;
       console.error("Failed to fetch cloud history:", err);
     } finally {
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }
   }, [user, history]);
 
   useEffect(() => {
-    fetchHistory();
+    let isMounted = true;
+    fetchHistory(isMounted);
     
     // Subscribe to realtime history updates
+    let channel: any;
     if (user) {
-      const channel = supabase.channel(`public:watch_history:user=${user.id}`)
+      channel = supabase.channel(`public:watch_history:user=${user.id}`)
         .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
           table: 'watch_history',
           filter: `user_id=eq.${user.id}`
-        }, () => fetchHistory())
+        }, () => isMounted && fetchHistory(isMounted))
         .subscribe();
-      return () => { supabase.removeChannel(channel); };
     }
+    
+    return () => { 
+      isMounted = false;
+      if (channel) supabase.removeChannel(channel); 
+    };
   }, [user, fetchHistory]);
 
   const addToHistory = async (movie: Movie, season?: number, episode?: number) => {

@@ -1,99 +1,76 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Comment } from '../types';
+import ProfilePreviewModal from './ProfilePreviewModal';
 
 interface Props {
   mediaId: number;
   mediaType: string;
   mediaTitle?: string;
-  currentEpisode?: number;
 }
 
-interface ProfileData {
-  username?: string;
-  avatar_url?: string;
+// Extend the local comment type to include profile data fetched from the join
+interface CommentWithProfile extends Comment {
+  profiles?: {
+    name: string;
+    profile_pic: string;
+  };
 }
 
-type SortOption = 'newest' | 'oldest' | 'top';
-
-const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "this title", currentEpisode }) => {
+const CommentSection: React.FC<Props> = ({ mediaId, mediaType }) => {
   const { user, openAuthModal } = useAuth();
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, ProfileData>>({});
+  const [comments, setComments] = useState<CommentWithProfile[]>([]);
   const [newComment, setNewComment] = useState('');
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const [userLikes, setUserLikes] = useState<Set<string>>(new Set<string>());
-  const [userDislikes, setUserDislikes] = useState<Set<string>>(new Set<string>());
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
-  const [showSortDropdown, setShowSortDropdown] = useState(false);
-  
-  const sortRef = useRef<HTMLDivElement>(null);
+  const [sortBy, setSortBy] = useState<'top' | 'newest'>('top');
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set<string>());
+  const [previewUser, setPreviewUser] = useState<any>(null);
 
-  useEffect(() => {
-    const userId = user?.id || 'guest';
-    const storedLikes = localStorage.getItem(`zen_likes_${userId}`);
-    const storedDislikes = localStorage.getItem(`zen_dislikes_${userId}`);
-    
-    if (storedLikes) {
-      try { setUserLikes(new Set<string>(JSON.parse(storedLikes))); } catch (e) {}
-    }
-    if (storedDislikes) {
-      try { setUserDislikes(new Set<string>(JSON.parse(storedDislikes))); } catch (e) {}
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
-        setShowSortDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const saveInteractionsToLocal = (newLikes: Set<string>, newDislikes: Set<string>) => {
-    const userId = user?.id || 'guest';
-    localStorage.setItem(`zen_likes_${userId}`, JSON.stringify(Array.from(newLikes)));
-    localStorage.setItem(`zen_dislikes_${userId}`, JSON.stringify(Array.from(newDislikes)));
-  };
-
-  const fetchProfiles = async (userIds: string[]) => {
-    if (userIds.length === 0) return;
-    try {
-      const { data } = await supabase.from('profiles').select('id, avatar_url, username').in('id', userIds);
-      if (data) {
-        const profileMap = data.reduce((acc: any, p: any) => ({ 
-          ...acc, 
-          [p.id]: { avatar_url: p.avatar_url, username: p.username } 
-        }), {});
-        setProfiles(prev => ({ ...prev, ...profileMap }));
-      }
-    } catch (err) {}
-  };
+  const userHasComment = user && comments.some(c => c.user_id === user.id && !c.parent_id);
 
   const fetchComments = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true);
     try {
-      let query = supabase.from('comments').select('*').eq('media_id', mediaId).eq('media_type', mediaType);
-      if (sortBy === 'newest') query = query.order('created_at', { ascending: false });
-      else if (sortBy === 'oldest') query = query.order('created_at', { ascending: true });
-      else if (sortBy === 'top') query = query.order('likes', { ascending: false });
+      // We fetch from comments and join with the 'user-info' table to get the LATEST avatar and name
+      // This bypasses the need for 'avatar_url' and 'username' columns in the 'comments' table
+      const { data, error: fetchError } = await supabase
+        .from('comments')
+        .select(`
+          *,
+          profiles: "user-info" (
+            name,
+            profile_pic
+          )
+        `)
+        .eq('media_id', mediaId)
+        .eq('media_type', mediaType);
 
-      const { data, error: fetchError } = await query;
       if (fetchError) throw fetchError;
       
-      const commentsData: Comment[] = (data as Comment[]) || [];
+      let commentsData = (data as CommentWithProfile[]) || [];
+
+      if (sortBy === 'top') {
+        commentsData.sort((a, b) => {
+          if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+          const scoreA = (a.likes || 0) - (a.dislikes || 0) + (a.is_hearted ? 500 : 0) + ((a.reply_count || 0) * 2);
+          const scoreB = (b.likes || 0) - (b.dislikes || 0) + (b.is_hearted ? 500 : 0) + ((b.reply_count || 0) * 2);
+          return scoreB - scoreA;
+        });
+      } else {
+        commentsData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+
       setComments(commentsData);
-      fetchProfiles(Array.from(new Set(commentsData.map(c => c.user_id))));
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Fetch comments error:", err);
       setError("Failed to sync discussion.");
     } finally {
       if (isInitial) setLoading(false);
@@ -102,31 +79,56 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
 
   useEffect(() => {
     fetchComments(true);
-    const channel = supabase.channel(`discussion_${mediaId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `media_id=eq.${mediaId}` }, () => fetchComments())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
   }, [mediaId, fetchComments]);
 
   const handleSubmit = async (e: React.FormEvent, parentId: string | null = null) => {
     e.preventDefault();
+    setError(null);
     const content = parentId ? replyText : newComment;
-    if (!content.trim() || submitting || !user) return;
+    
+    if (!content.trim()) return;
+    if (!user) {
+      openAuthModal();
+      return;
+    }
+
+    if (!parentId && userHasComment) {
+      setError("You've already reviewed this. Try editing your existing comment!");
+      return;
+    }
 
     setSubmitting(true);
-    const username = user.user_metadata?.username || user.email?.split('@')[0] || 'User';
 
     try {
-      const { error: insertError } = await supabase.from('comments').insert([{ 
-        user_id: user.id, media_id: mediaId, media_type: mediaType, 
-        content: content, username: username, parent_id: parentId,
-        likes: 0, dislikes: 0
-      }]);
-      if (insertError) throw insertError;
+      // NOTE: Removed 'avatar_url' and 'username' from the payload 
+      // as they are handled by the 'profiles' join in the fetch.
+      const payload = { 
+        user_id: user.id, 
+        media_id: mediaId, 
+        media_type: mediaType, 
+        content: content, 
+        parent_id: parentId,
+        likes: 0, 
+        dislikes: 0, 
+        is_pinned: false, 
+        is_hearted: false,
+        reply_count: 0
+      };
+
+      const { error: insertError } = await supabase.from('comments').insert([payload]);
+      
+      if (insertError) {
+        console.error("Supabase Insert Error:", insertError);
+        throw new Error(insertError.message);
+      }
+      
       if (!parentId) setNewComment('');
       else { setReplyToId(null); setReplyText(''); }
-    } catch (err) {
-      setError("Failed to post.");
+      
+      await fetchComments();
+    } catch (err: any) {
+      console.error("Comment Post Failed:", err);
+      setError(err.message || "Post failed. Please check your connection.");
     } finally {
       setSubmitting(false);
     }
@@ -137,214 +139,184 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
     const comment = comments.find(c => c.id === commentId);
     if (!comment) return;
 
-    let nextLikes = comment.likes || 0;
-    let nextDislikes = comment.dislikes || 0;
-    const isLiked = userLikes.has(commentId);
-    const isDisliked = userDislikes.has(commentId);
-    const nextLikesSet = new Set<string>(userLikes);
-    const nextDislikesSet = new Set<string>(userDislikes);
-
-    if (type === 'like') {
-      if (isLiked) { nextLikes = Math.max(0, nextLikes - 1); nextLikesSet.delete(commentId); }
-      else { 
-        nextLikes += 1; nextLikesSet.add(commentId);
-        if (isDisliked) { nextDislikes = Math.max(0, nextDislikes - 1); nextDislikesSet.delete(commentId); }
-      }
-    } else {
-      if (isDisliked) { nextDislikes = Math.max(0, nextDislikes - 1); nextDislikesSet.delete(commentId); }
-      else { 
-        nextDislikes += 1; nextDislikesSet.add(commentId);
-        if (isLiked) { nextLikes = Math.max(0, nextLikes - 1); nextLikesSet.delete(commentId); }
-      }
-    }
-
-    setComments(prev => prev.map(c => c.id === commentId ? { ...c, likes: nextLikes, dislikes: nextDislikes } : c));
-    setUserLikes(nextLikesSet);
-    setUserDislikes(nextDislikesSet);
-    saveInteractionsToLocal(nextLikesSet, nextDislikesSet);
-
     try {
-      await supabase.from('comments').update({ likes: nextLikes, dislikes: nextDislikes }).eq('id', commentId);
-    } catch (err) { fetchComments(); }
+      const updateData = type === 'like' 
+        ? { likes: (comment.likes || 0) + 1 }
+        : { dislikes: (comment.dislikes || 0) + 1 };
+        
+      const { error: updateError } = await supabase.from('comments').update(updateData).eq('id', commentId);
+      if (updateError) throw updateError;
+      fetchComments();
+    } catch (err) {
+      console.error("Interaction failed:", err);
+    }
   };
 
   const getTimeAgo = (dateStr: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / 1000);
     if (seconds < 60) return "just now";
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
   };
 
-  const renderComment = (comment: Comment, isReply: boolean = false) => {
+  const renderComment = (comment: CommentWithProfile, isReply: boolean = false) => {
     const replies = comments.filter(c => c.parent_id === comment.id);
-    const isLiked = userLikes.has(comment.id);
-    const isDisliked = userDislikes.has(comment.id);
-    
-    // Get latest profile data, fall back to comment snapshot if not loaded yet
-    const profile = profiles[comment.user_id];
-    const displayUsername = profile?.username || comment.username;
-    const avatarUrl = profile?.avatar_url;
+    const isExpanded = expandedReplies.has(comment.id);
+    const isOwn = user?.id === comment.user_id;
+    const isDeleted = comment.content === null;
 
-    const isGoldUser = comment.likes && comment.likes > 5;
+    // Use the joined profile data, falling back to basic info if the join is empty
+    const displayName = comment.profiles?.name || comment.username || 'User';
+    const displayAvatar = comment.profiles?.profile_pic || comment.avatar_url;
 
     return (
-      <div key={comment.id} className={`flex gap-2.5 md:gap-3 ${isReply ? 'ml-8 md:ml-12 mt-3 md:mt-4' : 'mt-5 md:mt-6'}`}>
-        <div className="shrink-0">
-          <div className="w-9 h-9 md:w-11 md:h-11 rounded-full overflow-hidden bg-[#1a1c22]">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-[10px] md:text-xs text-gray-500 bg-[#23252b]">
-                {displayUsername.charAt(0)}
+      <div key={comment.id} className={`w-full ${isReply ? 'mt-3 pl-4 border-l border-white/5' : 'mt-6'}`}>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => setPreviewUser({ id: comment.user_id, username: displayName, avatar_url: displayAvatar })}
+            className="shrink-0"
+          >
+            <div className={`${isReply ? 'w-6 h-6' : 'w-9 h-9'} rounded-full overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-black`}>
+              {displayAvatar ? <img src={displayAvatar} className="w-full h-full object-cover" /> : displayName.charAt(0)}
+            </div>
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-[12px] font-black text-white hover:underline cursor-pointer">@{displayName.toLowerCase()}</span>
+              <span className="text-[10px] text-gray-500 font-bold">{getTimeAgo(comment.created_at)}</span>
+              {comment.is_pinned && <span className="bg-[#1ce783]/20 text-[#1ce783] text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm flex items-center gap-1">📌 Pinned</span>}
+              {comment.is_hearted && <span className="text-red-500 text-[10px]">❤️</span>}
+            </div>
+
+            <div className="text-[13px] text-gray-200 leading-relaxed mb-2">
+              {isDeleted ? (
+                <span className="text-gray-600 italic font-medium">[comment deleted]</span>
+              ) : (
+                comment.content
+              )}
+            </div>
+
+            {!isDeleted && (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1 group">
+                  <button onClick={() => handleInteraction(comment.id, 'like')} className="p-1 text-gray-500 hover:text-white transition-colors">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14 10h4.708c.286 0 .566.123.76.339l.135.143c.842.893.69 2.32-.326 3.012l-1.125.756a1 1 0 00-.448.832v.003c0 .17-.067.33-.187.45l-.135.135a1 1 0 01-.707.293H12.382a1 1 0 00-.894.553l-.511 1.022a1 1 0 01-.894.553H8.382a1 1 0 01-.894-.553l-.511-1.022a1 1 0 00-.894-.553H3.123a1 1 0 01-.894-.553l-.511-1.022a1 1 0 00-.894-.553H1a1 1 0 01-1-1v-4a1 1 0 011-1h3.123a1 1 0 00.894.553l.511 1.022a1 1 0 01.894.553h1.618a1 1 0 01.894.553l.511 1.022a1 1 0 00.894.553h3.708a1 1 0 00.894-.553l.511-1.022a1 1 0 01.894-.553H14V10z"/></svg>
+                  </button>
+                  <span className="text-[10px] font-black text-gray-500 group-hover:text-white transition-colors">{comment.likes}</span>
+                </div>
+                
+                <button onClick={() => handleInteraction(comment.id, 'dislike')} className="p-1 text-gray-500 hover:text-white transition-colors">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 14H5.292a1 1 0 00-.76.339l-.135.143c-.842.893-.69 2.32.326 3.012l1.125.756a1 1 0 00.448.832v.003c0 .17.067.33.187.45l.135.135a1 1 0 01.707.293h2.618a1 1 0 00.894.553l.511 1.022a1 1 0 01.894.553h1.618a1 1 0 01.894-.553l.511-1.022a1 1 0 00.894-.553h3.123a1 1 0 01.894.553l.511 1.022a1 1 0 00.894.553H23a1 1 0 011 1v4a1 1 0 01-1 1h-3.123a1 1 0 00-.894-.553l-.511-1.022a1 1 0 01-.894-.553h-1.618a1 1 0 01-.894-.553l-.511-1.022a1 1 0 00-.894-.553h-3.708a1 1 0 00-.894.553l-.511-1.022a1 1 0 01-.894.553H10V14z"/></svg>
+                </button>
+
+                {!isReply && (
+                  <button onClick={() => { if (!user) openAuthModal(); else setReplyToId(replyToId === comment.id ? null : comment.id); }} className="text-[10px] font-black uppercase text-gray-500 hover:text-white">Reply</button>
+                )}
+
+                {isOwn && <button onClick={async () => {
+                   if (!window.confirm("Delete this comment?")) return;
+                   const { error } = await supabase.from('comments').update({ content: null }).eq('id', comment.id);
+                   if (!error) fetchComments();
+                }} className="text-[10px] font-black uppercase text-gray-600 hover:text-red-500">Delete</button>}
+              </div>
+            )}
+
+            {replyToId === comment.id && (
+              <form onSubmit={(e) => handleSubmit(e, comment.id)} className="mt-3 flex gap-3 animate-in slide-in-from-top-2 duration-200">
+                <input autoFocus value={replyText} onChange={(e) => { setReplyText(e.target.value); setError(null); }} placeholder="Add a reply..." className="flex-1 bg-transparent border-b border-white/20 pb-1 text-[12px] outline-none focus:border-[#1ce783] transition-all" />
+                <button type="submit" disabled={!replyText.trim() || submitting} className="text-[10px] font-black uppercase text-[#1ce783] hover:scale-105 active:scale-95 transition-all">
+                  {submitting ? '...' : 'Post'}
+                </button>
+              </form>
+            )}
+
+            {replies.length > 0 && !isReply && (
+              <button onClick={() => setExpandedReplies(prev => { const n = new Set(prev); if (n.has(comment.id)) n.delete(comment.id); else n.add(comment.id); return n; })} className="mt-2 text-[#3ea6ff] text-[12px] font-black hover:bg-[#3ea6ff]/10 px-2 py-1 rounded-full transition-all">
+                {isExpanded ? 'Hide' : `View ${replies.length}`} {replies.length === 1 ? 'reply' : 'replies'}
+              </button>
+            )}
+
+            {isExpanded && !isReply && (
+              <div className="mt-1 animate-in slide-in-from-left-1 duration-200">
+                {replies.map(r => renderComment(r, true))}
               </div>
             )}
           </div>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 md:mb-1">
-            <span className={`text-[12px] md:text-[13px] font-bold ${isGoldUser ? 'text-[#ffdd95]' : 'text-[#888]'}`}>
-              {displayUsername}
-            </span>
-            {isGoldUser && (
-              <span className="text-[8px] md:text-[9px] bg-[#332a18] text-[#ffdd95] px-1 rounded-[2px] font-bold uppercase tracking-tighter">CRAB</span>
-            )}
-            <span className="text-[10px] md:text-[11px] text-gray-600 font-medium whitespace-nowrap">
-              {getTimeAgo(comment.created_at)}
-            </span>
-          </div>
-
-          <p className="text-[#ccc] text-[13px] md:text-[14px] leading-snug mb-2 font-normal">
-            {comment.content}
-          </p>
-
-          <div className="flex items-center gap-3 md:gap-4 text-gray-500 text-[11px] md:text-[12px] font-medium">
-            <button 
-              onClick={() => setReplyToId(replyToId === comment.id ? null : comment.id)}
-              className="flex items-center gap-1 hover:text-white transition-colors"
-            >
-              <svg className="w-3 md:w-3.5 h-3 md:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-              </svg>
-              Reply
-            </button>
-
-            <button 
-              onClick={() => handleInteraction(comment.id, 'like')}
-              className={`flex items-center gap-0.5 md:gap-1 hover:text-white transition-colors ${isLiked ? 'text-white' : ''}`}
-            >
-              <svg className="w-3 md:w-3.5 h-3 md:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-              </svg>
-              {comment.likes || ''}
-            </button>
-
-            <button 
-              onClick={() => handleInteraction(comment.id, 'dislike')}
-              className={`flex items-center gap-0.5 md:gap-1 hover:text-white transition-colors ${isDisliked ? 'text-white' : ''}`}
-            >
-              <svg className="w-3 md:w-3.5 h-3 md:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.737 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-              </svg>
-              {comment.dislikes || ''}
-            </button>
-
-            <button className="flex items-center gap-0.5 hover:text-white transition-colors">
-              <svg className="w-3 md:w-3.5 h-3 md:h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 10a2 2 0 100 4 2 2 0 000-4zM18 10a2 2 0 100 4 2 2 0 000-4zM6 10a2 2 0 100 4 2 2 0 000-4z" />
-              </svg>
-              More
-            </button>
-          </div>
-
-          {replyToId === comment.id && (
-            <form onSubmit={(e) => handleSubmit(e, comment.id)} className="mt-3">
-              <textarea
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Write a reply..."
-                className="w-full bg-[#16181d] border border-white/5 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#555] min-h-[70px] text-white"
-              />
-              <div className="flex justify-end gap-2 mt-2">
-                <button type="button" onClick={() => setReplyToId(null)} className="px-3 py-1 text-[11px] font-bold text-gray-500 uppercase">Cancel</button>
-                <button type="submit" className="bg-[#555] text-white px-3 py-1 rounded-sm text-[11px] font-bold uppercase">Post</button>
-              </div>
-            </form>
-          )}
-
-          {replies.map(reply => renderComment(reply, true))}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="mt-8 md:mt-12 w-full max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[15px] md:text-[20px] font-bold text-white flex items-center gap-2">
-          <svg className="w-4 md:w-5 h-4 md:h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
-          {comments.length} Comments
-        </h2>
-
-        <div className="relative" ref={sortRef}>
-          <button onClick={() => setShowSortDropdown(!showSortDropdown)} className="text-[12px] md:text-[13px] text-gray-400 flex items-center gap-1 font-bold">
-            Sort by <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" /></svg>
-          </button>
-          {showSortDropdown && (
-            <div className="absolute right-0 top-full mt-1 bg-[#23252b] border border-white/5 rounded shadow-xl z-50 min-w-[110px]">
-              {(['newest', 'top'] as SortOption[]).map(opt => (
-                <button key={opt} onClick={() => { setSortBy(opt); setShowSortDropdown(false); }} className={`w-full px-3 py-2 text-left text-[11px] font-bold hover:bg-white/5 ${sortBy === opt ? 'text-white' : 'text-gray-400'}`}>
-                  {opt === 'newest' ? 'Newest' : 'Top Rated'}
-                </button>
-              ))}
-            </div>
-          )}
+    <div className="mt-16 w-full max-w-3xl mx-auto px-4">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-xl font-black uppercase italic tracking-tighter">
+            {comments.length} <span className="text-[#1ce783]">Discussion</span>
+          </h2>
+        </div>
+        <div className="flex gap-4">
+          <button onClick={() => setSortBy('top')} className={`text-[10px] font-black uppercase tracking-widest transition-colors ${sortBy === 'top' ? 'text-[#1ce783]' : 'text-gray-500 hover:text-white'}`}>Top</button>
+          <button onClick={() => setSortBy('newest')} className={`text-[10px] font-black uppercase tracking-widest transition-colors ${sortBy === 'newest' ? 'text-[#1ce783]' : 'text-gray-500 hover:text-white'}`}>Newest</button>
         </div>
       </div>
 
-      <div className="mb-6 md:mb-8">
+      {error && (
+        <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl animate-in slide-in-from-top-2">
+          <p className="text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {error}
+          </p>
+        </div>
+      )}
+
+      <div className="mb-10">
         {!user ? (
-          <div className="bg-[#16181d] rounded-sm p-3.5 text-[12px] md:text-[13px] text-gray-500 font-medium">
-            You must be <button onClick={openAuthModal} className="text-[#ffdd95] hover:underline">login</button> to post a comment
+          <div className="p-4 bg-white/5 border border-white/5 rounded-2xl text-[12px] text-gray-500 text-center font-bold">
+            Join the elite circle. <button onClick={openAuthModal} className="text-[#1ce783] hover:underline">Sign In</button>
           </div>
         ) : (
-          <form onSubmit={(e) => handleSubmit(e)} className="flex gap-2.5 md:gap-3">
-             <div className="shrink-0">
-               <div className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-[#23252b] flex items-center justify-center text-[10px] md:text-xs text-gray-500 font-bold">
-                 {user.user_metadata?.username?.charAt(0) || 'U'}
-               </div>
-             </div>
-             <div className="flex-1 relative">
-               <textarea
-                 value={newComment}
-                 onChange={(e) => setNewComment(e.target.value)}
-                 placeholder="Leave a comment"
-                 className="w-full bg-[#16181d] border-b border-white/5 p-2.5 md:p-3 text-[13px] md:text-[14px] outline-none focus:border-white/20 min-h-[80px] md:min-h-[90px] text-white resize-none"
-               />
-               <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5">
-                 <button type="button" className="text-gray-500 hover:text-white transition-colors">
-                   <svg className="w-4 md:w-5 h-4 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <form onSubmit={(e) => handleSubmit(e)} className="flex gap-4 group">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-sm font-black text-black shrink-0 shadow-lg">
+              {user.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover rounded-full" /> : user.user_metadata?.username?.charAt(0) || 'U'}
+            </div>
+            <div className="flex-1">
+              <textarea
+                value={newComment}
+                onChange={(e) => { setNewComment(e.target.value); setError(null); }}
+                placeholder={userHasComment ? "You've already reviewed this movie." : "Share your impression..."}
+                disabled={userHasComment || submitting}
+                className="w-full bg-transparent border-b border-white/10 py-2 text-[14px] outline-none focus:border-[#1ce783] transition-all resize-none min-h-[40px] disabled:opacity-40"
+                rows={1}
+              />
+              <div className="flex justify-end gap-2 mt-3 opacity-0 group-focus-within:opacity-100 transition-opacity">
+                 <button type="button" onClick={() => { setNewComment(''); setError(null); }} className="px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">Cancel</button>
+                 <button type="submit" disabled={!newComment.trim() || submitting || userHasComment} className="px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-sm bg-[#1ce783] text-black disabled:opacity-30 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#1ce783]/20">
+                   {submitting ? 'Posting...' : 'Comment'}
                  </button>
-                 {newComment.trim() && (
-                    <button type="submit" disabled={submitting} className="bg-[#555] text-white px-4 md:px-6 py-1.5 rounded-sm text-[11px] font-bold uppercase hover:bg-white hover:text-black transition-all">
-                      {submitting ? '...' : 'Post'}
-                    </button>
-                 )}
-               </div>
-             </div>
+              </div>
+            </div>
           </form>
         )}
       </div>
 
-      <div className="divide-y divide-white/5">
+      <div className="space-y-4">
         {loading ? (
-          <div className="py-8 text-center text-gray-500 text-[10px] uppercase tracking-widest font-bold">Loading...</div>
-        ) : comments.filter(c => !c.parent_id).map(c => renderComment(c))}
+          <div className="py-20 flex justify-center"><div className="w-8 h-8 border-2 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div></div>
+        ) : comments.length === 0 ? (
+          <p className="py-20 text-center text-gray-600 italic font-medium">Be the pioneer of this discussion.</p>
+        ) : (
+          comments.filter(c => !c.parent_id).map(c => renderComment(c))
+        )}
       </div>
+
+      <ProfilePreviewModal user={previewUser} onClose={() => setPreviewUser(null)} />
     </div>
   );
 };

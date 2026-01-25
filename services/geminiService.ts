@@ -15,7 +15,7 @@ export const getCorrectedQuery = async (query: string): Promise<string | null> =
       If it's already correct or too vague to identify a single specific title, return the original query.
       Output ONLY the title string, no explanation.`,
       config: {
-        temperature: 0.1, // Low temperature for precision
+        temperature: 0.1,
       }
     });
 
@@ -61,9 +61,6 @@ export const getAISuggestions = async (prompt: string): Promise<AISuggestion[]> 
   }
 };
 
-/**
- * Generates high-hype headlines for 2026 releases
- */
 export const getUpcomingNews = async (titles: { title: string, overview: string }[]): Promise<Record<string, string>> => {
   const ai = getAIClient();
   

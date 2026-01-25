@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +9,7 @@ const MobileNav: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'U';
+  const avatarUrl = user?.user_metadata?.avatar_url;
   const initial = String(username).charAt(0).toUpperCase();
 
   const links = [
@@ -54,33 +56,42 @@ const MobileNav: React.FC = () => {
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#040404]/90 backdrop-blur-xl border-t border-white/5 z-50 flex items-center justify-around px-2 pb-safe">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#040404]/95 backdrop-blur-2xl border-t border-white/5 z-50 flex items-center justify-around px-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
       {links.map((link) => (
         <Link 
           key={link.path}
           to={link.path} 
-          className={`flex flex-col items-center justify-center gap-1 transition-all duration-300 w-16 ${isActive(link.path) ? 'text-[#1ce783] scale-110' : 'text-gray-500'}`}
+          className={`flex flex-col items-center justify-center gap-1 transition-all duration-150 transform-gpu w-16 active:scale-90 ${isActive(link.path) ? 'text-[#1ce783]' : 'text-gray-500'}`}
         >
-          {link.icon}
+          <div className={`p-1.5 rounded-xl transition-colors ${isActive(link.path) ? 'bg-[#1ce783]/10' : ''}`}>
+            {link.icon}
+          </div>
           <span className="text-[9px] font-black uppercase tracking-tighter">{link.label}</span>
         </Link>
       ))}
 
-      {/* Dynamic Profile/Sign In Button */}
       <button 
         onClick={user ? openProfileModal : openAuthModal}
-        className="flex flex-col items-center justify-center gap-1 transition-all duration-300 w-16 text-gray-500"
+        className="flex flex-col items-center justify-center gap-1 transition-all duration-150 transform-gpu w-16 active:scale-90 text-gray-500"
       >
-        {user ? (
-          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-[10px] font-black uppercase text-black">
-            {initial}
-          </div>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-        )}
+        <div className={`p-0.5 rounded-full transition-all ${user ? 'ring-2 ring-[#1ce783]/20 ring-offset-2 ring-offset-[#040404]' : ''}`}>
+          {user ? (
+            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-[10px] font-black uppercase text-black shadow-lg overflow-hidden">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+              ) : (
+                initial
+              )}
+            </div>
+          ) : (
+            <div className="p-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+          )}
+        </div>
         <span className="text-[9px] font-black uppercase tracking-tighter">
           {user ? 'Profile' : 'Sign In'}
         </span>

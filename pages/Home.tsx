@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent } from '../services/tmdbService';
+import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent, fetchAwardWinning } from '../services/tmdbService';
 import { useHistory } from '../hooks/useHistory';
 import { Movie } from '../types';
 import { BACKDROP_URL } from '../constants';
@@ -69,12 +69,16 @@ const Home: React.FC = () => {
   const [netflix, setNetflix] = useState<Movie[]>([]);
   const [tvTrending, setTvTrending] = useState<Movie[]>([]);
   const [anime, setAnime] = useState<Movie[]>([]);
+  const [awardWinning, setAwardWinning] = useState<Movie[]>([]);
   const [hero, setHero] = useState<Movie | null>(null);
+  
+  // Optimistic initial loading states - if we have cache, we set loading to false immediately
   const [loadingHero, setLoadingHero] = useState(true);
   const [loadingTrending, setLoadingTrending] = useState(true);
   const [loadingNetflix, setLoadingNetflix] = useState(true);
   const [loadingAnime, setLoadingAnime] = useState(true);
   const [loadingTV, setLoadingTV] = useState(true);
+  const [loadingAwards, setLoadingAwards] = useState(true);
   const [genreMap, setGenreMap] = useState<Record<number, string>>({});
   
   useEffect(() => {
@@ -110,12 +114,17 @@ const Home: React.FC = () => {
       if (res?.results) setTvTrending(res.results);
       setLoadingTV(false);
     });
+
+    fetchAwardWinning('movie', 1).then(res => {
+      if (res?.results) setAwardWinning(res.results);
+      setLoadingAwards(false);
+    });
   }, []);
 
   return (
     <div className="pb-20">
       {/* Hero Section */}
-      {loadingHero ? (
+      {loadingHero && !hero ? (
         <HeroSkeleton />
       ) : hero && (
         <section className="relative h-[70vh] md:h-[90vh] w-full overflow-hidden">
@@ -123,14 +132,15 @@ const Home: React.FC = () => {
             <img 
               src={`${BACKDROP_URL}${hero.backdrop_path}`}
               className="w-full h-full object-cover animate-in fade-in duration-1000"
-              alt={hero.title}
+              alt={hero.title || hero.name}
               loading="eager"
+              decoding="async"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-[#040404]/40 to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent" />
           </div>
           
-          <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6">
+          <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
             <div className="flex items-center gap-3">
               <span className="text-[#1ce783] text-sm md:text-lg font-black">★ {hero.vote_average.toFixed(1)}</span>
               <div className="h-[1px] w-8 bg-white/20"></div>
@@ -146,13 +156,13 @@ const Home: React.FC = () => {
             </p>
             <div className="flex items-center gap-4 pt-4 animate-in slide-in-from-bottom-4 duration-1000">
               <Link 
-                to={`/details/${hero.media_type}/${hero.id}`}
+                to={`/details/${hero.media_type || 'movie'}/${hero.id}`}
                 className="bg-[#1ce783] text-black px-10 md:px-16 py-3 md:py-4 rounded-sm font-black text-xs md:text-base uppercase tracking-widest hover:bg-white transition-all transform active:scale-95 shadow-2xl"
               >
                 Watch
               </Link>
               <Link 
-                to={`/details/${hero.media_type}/${hero.id}`}
+                to={`/details/${hero.media_type || 'movie'}/${hero.id}`}
                 className="bg-white/10 backdrop-blur-md text-white px-8 md:px-12 py-3 md:py-4 rounded-sm font-black text-xs md:text-base uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
               >
                 Details
@@ -177,14 +187,22 @@ const Home: React.FC = () => {
           title="Trending Now" 
           subtitle="Cinematic Pulse" 
           movies={trending} 
-          loading={loadingTrending} 
+          loading={loadingTrending && trending.length === 0} 
+        />
+
+        <MediaSection 
+          title="Award Winning" 
+          subtitle="Critically Acclaimed" 
+          movies={awardWinning} 
+          loading={loadingAwards && awardWinning.length === 0} 
+          color="#fbbf24"
         />
 
         <MediaSection 
           title="Netflix Originals" 
           subtitle="Global Premiere" 
           movies={netflix} 
-          loading={loadingNetflix} 
+          loading={loadingNetflix && netflix.length === 0} 
           color="#e50914"
         />
 
@@ -192,7 +210,7 @@ const Home: React.FC = () => {
           title="Anime Hits" 
           subtitle="Rising Sun" 
           movies={anime} 
-          loading={loadingAnime} 
+          loading={loadingAnime && anime.length === 0} 
           color="#22d3ee"
         />
 
@@ -200,7 +218,7 @@ const Home: React.FC = () => {
           title="Popular Series" 
           subtitle="Must Watch" 
           movies={tvTrending} 
-          loading={loadingTV} 
+          loading={loadingTV && tvTrending.length === 0} 
         />
       </div>
     </div>

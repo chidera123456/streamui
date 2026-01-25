@@ -1,3 +1,4 @@
+
 import React, { useState, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Movie } from '../types';
@@ -39,6 +40,7 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false }) => {
             src={poster} 
             alt={title}
             loading={priority ? "eager" : "lazy"}
+            decoding="async"
             className="w-full h-full object-cover transition-transform duration-700"
           />
           

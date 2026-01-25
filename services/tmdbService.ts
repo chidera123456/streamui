@@ -8,8 +8,9 @@ const CACHE_DURATION = 1000 * 60 * 30; // 30 minutes
 
 const handleResponse = async (response: Response, cacheKey?: string) => {
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    console.error(`TMDB API Error: ${response.status} ${response.statusText}`, errorBody);
+    if (cacheKey && cache.has(cacheKey)) {
+      return cache.get(cacheKey)!.data;
+    }
     throw new Error(`TMDB Request failed: ${response.status}`);
   }
   const data = await response.json();
@@ -27,19 +28,35 @@ const getFromCache = (key: string) => {
   return null;
 };
 
-// Use explicit headers to avoid generic fetch failures
-const secureFetch = (url: string) => fetch(url, {
-  method: 'GET',
-  headers: {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json'
+/**
+ * Standardized fetch for TMDB with offline protection and timeout.
+ */
+const secureFetch = async (url: string) => {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new Error('OFFLINE');
   }
-});
+
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+};
 
 export const fetchTrending = async (type: 'movie' | 'tv' | 'all' = 'movie', page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `trending-${type}-${page}`;
   const cached = getFromCache(cacheKey);
-  if (cached) return { results: cached.results.map((m: any) => ({ ...m, media_type: m.media_type || (type === 'all' ? 'movie' : type) })), totalPages: cached.total_pages };
+  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: m.media_type || (type === 'all' ? 'movie' : type) })), totalPages: cached.total_pages };
 
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/trending/${type}/week?api_key=${TMDB_API_KEY}&page=${page}`);
@@ -48,8 +65,28 @@ export const fetchTrending = async (type: 'movie' | 'tv' | 'all' = 'movie', page
       results: (data.results || []).map((m: any) => ({ ...m, media_type: m.media_type || (type === 'all' ? 'movie' : type) })),
       totalPages: data.total_pages || 1
     };
+  } catch (err: any) {
+    const oldCache = cache.get(cacheKey);
+    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+  }
+};
+
+export const fetchAwardWinning = async (type: 'movie' | 'tv', page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
+  const cacheKey = `award-winning-${type}-${page}`;
+  const cached = getFromCache(cacheKey);
+  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: type })), totalPages: cached.total_pages };
+
+  try {
+    const minVoteCount = type === 'movie' ? 1000 : 500;
+    const url = `${TMDB_BASE_URL}/discover/${type}?api_key=${TMDB_API_KEY}&page=${page}&vote_average.gte=8&vote_count.gte=${minVoteCount}&sort_by=vote_average.desc&include_adult=false`;
+    
+    const response = await secureFetch(url);
+    const data = await handleResponse(response, cacheKey);
+    return {
+      results: (data.results || []).map((m: any) => ({ ...m, media_type: type })),
+      totalPages: data.total_pages || 1
+    };
   } catch (err) {
-    console.error("fetchTrending failed:", err);
     return { results: [], totalPages: 0 };
   }
 };
@@ -57,7 +94,7 @@ export const fetchTrending = async (type: 'movie' | 'tv' | 'all' = 'movie', page
 export const fetchNetflixContent = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `netflix-originals-${page}`;
   const cached = getFromCache(cacheKey);
-  if (cached) return { results: cached.results.map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
+  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
 
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_networks=213&sort_by=popularity.desc&page=${page}`);
@@ -67,7 +104,6 @@ export const fetchNetflixContent = async (page: number = 1): Promise<{ results: 
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    console.error("fetchNetflixContent failed:", err);
     return { results: [], totalPages: 0 };
   }
 };
@@ -75,7 +111,7 @@ export const fetchNetflixContent = async (page: number = 1): Promise<{ results: 
 export const fetchUpcomingMovies = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `upcoming-movies-2026-${page}`;
   const cached = getFromCache(cacheKey);
-  if (cached) return { results: cached.results.map((m: any) => ({ ...m, media_type: 'movie' })), totalPages: cached.total_pages };
+  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: 'movie' })), totalPages: cached.total_pages };
 
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&page=${page}&primary_release_year=2026&sort_by=popularity.desc&include_adult=false`);
@@ -85,7 +121,6 @@ export const fetchUpcomingMovies = async (page: number = 1): Promise<{ results: 
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    console.error("fetchUpcomingMovies failed:", err);
     return { results: [], totalPages: 0 };
   }
 };
@@ -93,7 +128,7 @@ export const fetchUpcomingMovies = async (page: number = 1): Promise<{ results: 
 export const fetchUpcomingTV = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `upcoming-tv-2026-${page}`;
   const cached = getFromCache(cacheKey);
-  if (cached) return { results: cached.results.map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
+  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
 
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&page=${page}&first_air_date_year=2026&sort_by=popularity.desc&include_adult=false`);
@@ -103,7 +138,6 @@ export const fetchUpcomingTV = async (page: number = 1): Promise<{ results: Movi
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    console.error("fetchUpcomingTV failed:", err);
     return { results: [], totalPages: 0 };
   }
 };
@@ -118,12 +152,11 @@ export const fetchGenres = async (type: 'movie' | 'tv'): Promise<{ id: number, n
     const data = await handleResponse(response, cacheKey);
     return data.genres || [];
   } catch (err) {
-    console.error("fetchGenres failed:", err);
     return [];
   }
 };
 
-export const searchMedia = async (query: string, type: 'movie' | 'tv' | 'all', page: number = 1, year?: string): Promise<{ results: Movie[], totalPages: number }> => {
+export const searchMedia = async (query: string, type: 'all' | 'movie' | 'tv', page: number = 1, year?: string): Promise<{ results: Movie[], totalPages: number }> => {
   try {
     if (type === 'all') {
       const response = await secureFetch(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}`);
@@ -149,7 +182,6 @@ export const searchMedia = async (query: string, type: 'movie' | 'tv' | 'all', p
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    console.error("searchMedia failed:", err);
     return { results: [], totalPages: 0 };
   }
 };
@@ -173,7 +205,6 @@ export const discoverMedia = async (type: 'movie' | 'tv', page: number = 1, filt
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    console.error("discoverMedia failed:", err);
     return { results: [], totalPages: 0 };
   }
 };
@@ -181,7 +212,7 @@ export const discoverMedia = async (type: 'movie' | 'tv', page: number = 1, filt
 export const fetchAnime = async (page: number = 1, subGenre?: number): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `anime-${page}-${subGenre || 'all'}`;
   const cached = getFromCache(cacheKey);
-  if (cached) return { results: cached.results.map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
+  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
 
   try {
     const genres = subGenre ? `16,${subGenre}` : '16';
@@ -194,7 +225,6 @@ export const fetchAnime = async (page: number = 1, subGenre?: number): Promise<{
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    console.error("fetchAnime failed:", err);
     return { results: [], totalPages: 0 };
   }
 };
@@ -212,14 +242,13 @@ export const getDetails = async (id: number, type: 'movie' | 'tv'): Promise<Movi
 export const fetchSimilar = async (id: number, type: 'movie' | 'tv'): Promise<Movie[]> => {
   const cacheKey = `similar-${type}-${id}`;
   const cached = getFromCache(cacheKey);
-  if (cached) return cached.results.map((m: any) => ({ ...m, media_type: type }));
+  if (cached) return (cached.results || []).map((m: any) => ({ ...m, media_type: type }));
 
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/${type}/${id}/similar?api_key=${TMDB_API_KEY}`);
     const data = await handleResponse(response, cacheKey);
     return (data.results || []).map((m: any) => ({ ...m, media_type: type }));
   } catch (err) {
-    console.error("fetchSimilar failed:", err);
     return [];
   }
 };
@@ -234,7 +263,6 @@ export const getSeasonEpisodes = async (id: number, season: number): Promise<Epi
     const data = await handleResponse(response, cacheKey);
     return data.episodes || [];
   } catch (err) {
-    console.error("getSeasonEpisodes failed:", err);
     return [];
   }
 };
@@ -256,4 +284,9 @@ export const findByTitle = async (title: string): Promise<Movie | null> => {
     console.error("Error finding media by title:", title, err);
   }
   return null;
+};
+
+// Internal utility to check if data is cached
+export const isCached = (key: string): boolean => {
+  return !!getFromCache(key);
 };

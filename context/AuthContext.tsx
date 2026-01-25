@@ -14,18 +14,23 @@ interface AuthContextType {
   closeProfileModal: () => void;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   register: (username: string, email: string, password: string) => Promise<{ success: boolean; message: string }>;
-  updateProfile: (data: { username?: string }) => Promise<{ success: boolean; message: string }>;
+  updateProfile: (data: { username?: string; avatar_url?: string }) => Promise<{ success: boolean; message: string }>;
+  uploadAvatar: (file: File) => Promise<{ success: boolean; url?: string; message: string }>;
+  deleteAvatar: () => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
 }
 
+// Correct usage of named import createContext
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Correct usage of named import useState
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
+  // Correct usage of named import useEffect
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -78,33 +83,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true, message: 'Account created successfully!' };
   };
 
-  const updateProfile = async (data: { username?: string }) => {
+  const uploadAvatar = async (file: File) => {
     if (!user) return { success: false, message: 'No active session' };
 
-    // 1. Update Auth Metadata
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `pics/${user.id}-${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('user_profiles')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('user_profiles')
+        .getPublicUrl(fileName);
+
+      return { success: true, url: publicUrl, message: 'Upload successful' };
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  };
+
+  const deleteAvatar = async () => {
+    if (!user) return { success: false, message: 'No active session' };
+    
+    const currentUrl = user.user_metadata?.avatar_url;
+    if (!currentUrl) return { success: true, message: 'No avatar to delete' };
+
+    try {
+      const pathParts = currentUrl.split('/user_profiles/')[1];
+      if (pathParts) {
+        const decodedPath = decodeURIComponent(pathParts.split('?')[0]);
+        await supabase.storage.from('user_profiles').remove([decodedPath]);
+      }
+
+      return await updateProfile({ avatar_url: '' });
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  };
+
+  const updateProfile = async (data: { username?: string; avatar_url?: string }) => {
+    if (!user) return { success: false, message: 'No active session' };
+
     const { data: updatedUser, error: authError } = await supabase.auth.updateUser({
-      data: { username: data.username }
+      data: { 
+        username: data.username !== undefined ? data.username : user.user_metadata?.username,
+        avatar_url: data.avatar_url !== undefined ? data.avatar_url : user.user_metadata?.avatar_url
+      }
     });
     
     if (authError) return { success: false, message: authError.message };
 
-    // 2. Sync to public Profiles table (source of truth for lookups)
-    await supabase.from('profiles').upsert({
-      id: user.id,
-      username: data.username,
-      updated_at: new Date().toISOString()
-    });
+    const { error: profileError } = await supabase.from('user-info').upsert({
+      user_id: user.id,
+      name: data.username !== undefined ? data.username : user.user_metadata?.username,
+      profile_pic: data.avatar_url !== undefined ? data.avatar_url : user.user_metadata?.avatar_url,
+    }, { onConflict: 'user_id' });
 
-    // 3. Batch update ALL historical comments to replace the old name
-    const { error: commentsError } = await supabase
-      .from('comments')
-      .update({ username: data.username })
-      .eq('user_id', user.id);
+    if (profileError) console.error("Profile sync error:", profileError.message);
 
-    if (commentsError) console.warn("Some historical comments might not have synced:", commentsError.message);
+    // NOTE: We no longer update the 'comments' table directly here.
+    // Instead, the CommentSection uses a relational join to 'user-info' 
+    // to fetch the latest name and picture, which is much more efficient
+    // and prevents "missing column" crashes.
 
     setUser(updatedUser.user);
-    return { success: true, message: 'Identity updated globally!' };
+    return { success: true, message: 'Profile updated!' };
   };
 
   const logout = async () => {
@@ -116,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{ 
       user, loading, isAuthModalOpen, isProfileModalOpen, 
       openAuthModal, closeAuthModal, openProfileModal, closeProfileModal,
-      login, register, updateProfile, logout 
+      login, register, updateProfile, uploadAvatar, deleteAvatar, logout 
     }}>
       {children}
     </AuthContext.Provider>
@@ -124,6 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => {
+  // Correct usage of named import useContext
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
