@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent, fetchAwardWinning } from '../services/tmdbService';
 import { useHistory } from '../hooks/useHistory';
+import { useData } from '../context/DataContext';
 import { Movie } from '../types';
 import { BACKDROP_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
@@ -50,7 +51,7 @@ const MediaSection: React.FC<{ title: string; subtitle?: string; movies: Movie[]
         </Link>
       </div>
       
-      {loading ? (
+      {loading && movies.length === 0 ? (
         <GridSkeleton count={8} />
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 md:gap-5">
@@ -65,76 +66,84 @@ const MediaSection: React.FC<{ title: string; subtitle?: string; movies: Movie[]
 
 const Home: React.FC = () => {
   const { history } = useHistory();
-  const [trending, setTrending] = useState<Movie[]>([]);
-  const [netflix, setNetflix] = useState<Movie[]>([]);
-  const [tvTrending, setTvTrending] = useState<Movie[]>([]);
-  const [anime, setAnime] = useState<Movie[]>([]);
-  const [awardWinning, setAwardWinning] = useState<Movie[]>([]);
-  const [hero, setHero] = useState<Movie | null>(null);
+  const { homeData, setHomeData, genreMap, setGenreMap } = useData();
   
-  // Optimistic initial loading states - if we have cache, we set loading to false immediately
-  const [loadingHero, setLoadingHero] = useState(true);
-  const [loadingTrending, setLoadingTrending] = useState(true);
-  const [loadingNetflix, setLoadingNetflix] = useState(true);
-  const [loadingAnime, setLoadingAnime] = useState(true);
-  const [loadingTV, setLoadingTV] = useState(true);
-  const [loadingAwards, setLoadingAwards] = useState(true);
-  const [genreMap, setGenreMap] = useState<Record<number, string>>({});
-  
+  // Set initial loading based on whether we already have data in context
+  const [isInitialLoading, setIsInitialLoading] = useState(!homeData.loaded);
+
   useEffect(() => {
-    fetchGenres('movie').then(res => {
-      const gMap: Record<number, string> = {};
-      res.forEach(g => gMap[g.id] = g.name);
-      setGenreMap(gMap);
-    });
+    // CRITICAL: If data is already loaded, skip fetching entirely.
+    // This prevents re-renders and image "reloads" when navigating back.
+    if (homeData.loaded) {
+      setIsInitialLoading(false);
+      return;
+    }
 
-    fetchTrending('movie', 1).then(res => {
-      if (res?.results && res.results.length > 0) {
-        setTrending(res.results);
-        const backdropResults = res.results.filter(m => m.backdrop_path);
-        const sourceList = backdropResults.length > 0 ? backdropResults : res.results;
-        const randomIndex = Math.floor(Math.random() * Math.min(sourceList.length, 12));
-        setHero(sourceList[randomIndex]);
+    const loadData = async () => {
+      try {
+        const genresPromise = fetchGenres('movie').then(res => {
+          const gMap: Record<number, string> = {};
+          res.forEach(g => gMap[g.id] = g.name);
+          setGenreMap(gMap);
+        });
+
+        const trendingPromise = fetchTrending('movie', 1).then(res => {
+          if (res?.results && res.results.length > 0) {
+            const newData: Partial<typeof homeData> = { trending: res.results };
+            // Ensure hero is only selected once per session
+            if (!homeData.hero) {
+              const backdropResults = res.results.filter(m => m.backdrop_path);
+              const sourceList = backdropResults.length > 0 ? backdropResults : res.results;
+              const randomIndex = Math.floor(Math.random() * Math.min(sourceList.length, 12));
+              newData.hero = sourceList[randomIndex];
+            }
+            setHomeData(newData);
+          }
+        });
+
+        const netflixPromise = fetchNetflixContent(1).then(res => {
+          if (res?.results) setHomeData({ netflix: res.results });
+        });
+
+        const animePromise = fetchAnime(1).then(res => {
+          if (res?.results) setHomeData({ anime: res.results });
+        });
+
+        const tvPromise = fetchTrending('tv', 1).then(res => {
+          if (res?.results) setHomeData({ tvTrending: res.results });
+        });
+
+        const awardPromise = fetchAwardWinning('movie', 1).then(res => {
+          if (res?.results) setHomeData({ awardWinning: res.results });
+        });
+
+        await Promise.all([genresPromise, trendingPromise, netflixPromise, animePromise, tvPromise, awardPromise]);
+        setHomeData({ loaded: true });
+      } catch (err) {
+        console.error("Home data load failed", err);
+      } finally {
+        setIsInitialLoading(false);
       }
-      setLoadingHero(false);
-      setLoadingTrending(false);
-    });
+    };
 
-    fetchNetflixContent(1).then(res => {
-      if (res?.results) setNetflix(res.results);
-      setLoadingNetflix(false);
-    });
+    loadData();
+  }, [homeData.loaded, setHomeData, setGenreMap, homeData.hero]);
 
-    fetchAnime(1).then(res => {
-      if (res?.results) setAnime(res.results);
-      setLoadingAnime(false);
-    });
-
-    fetchTrending('tv', 1).then(res => {
-      if (res?.results) setTvTrending(res.results);
-      setLoadingTV(false);
-    });
-
-    fetchAwardWinning('movie', 1).then(res => {
-      if (res?.results) setAwardWinning(res.results);
-      setLoadingAwards(false);
-    });
-  }, []);
+  const { hero, trending, awardWinning, netflix, anime, tvTrending } = homeData;
 
   return (
     <div className="pb-20">
       {/* Hero Section */}
-      {loadingHero && !hero ? (
+      {isInitialLoading && !hero ? (
         <HeroSkeleton />
       ) : hero && (
         <section className="relative h-[70vh] md:h-[90vh] w-full overflow-hidden">
           <div className="absolute inset-0">
             <img 
               src={`${BACKDROP_URL}${hero.backdrop_path}`}
-              className="w-full h-full object-cover animate-in fade-in duration-1000"
+              className="w-full h-full object-cover"
               alt={hero.title || hero.name}
               loading="eager"
-              decoding="async"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-[#040404]/40 to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent" />
@@ -148,13 +157,13 @@ const Home: React.FC = () => {
                 {hero.genre_ids?.slice(0, 2).map(id => genreMap[id]).join(' • ')}
               </span>
             </div>
-            <h1 className="text-4xl md:text-8xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700">
+            <h1 className="text-4xl md:text-8xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl">
               {hero.title || hero.name}
             </h1>
-            <p className="text-gray-300 text-xs md:text-lg max-w-2xl line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
+            <p className="text-gray-300 text-xs md:text-lg max-w-2xl line-clamp-3 font-medium leading-relaxed">
               {hero.overview}
             </p>
-            <div className="flex items-center gap-4 pt-4 animate-in slide-in-from-bottom-4 duration-1000">
+            <div className="flex items-center gap-4 pt-4">
               <Link 
                 to={`/details/${hero.media_type || 'movie'}/${hero.id}`}
                 className="bg-[#1ce783] text-black px-10 md:px-16 py-3 md:py-4 rounded-sm font-black text-xs md:text-base uppercase tracking-widest hover:bg-white transition-all transform active:scale-95 shadow-2xl"
@@ -187,14 +196,14 @@ const Home: React.FC = () => {
           title="Trending Now" 
           subtitle="Cinematic Pulse" 
           movies={trending} 
-          loading={loadingTrending && trending.length === 0} 
+          loading={isInitialLoading && trending.length === 0} 
         />
 
         <MediaSection 
           title="Award Winning" 
           subtitle="Critically Acclaimed" 
           movies={awardWinning} 
-          loading={loadingAwards && awardWinning.length === 0} 
+          loading={isInitialLoading && awardWinning.length === 0} 
           color="#fbbf24"
         />
 
@@ -202,7 +211,7 @@ const Home: React.FC = () => {
           title="Netflix Originals" 
           subtitle="Global Premiere" 
           movies={netflix} 
-          loading={loadingNetflix && netflix.length === 0} 
+          loading={isInitialLoading && netflix.length === 0} 
           color="#e50914"
         />
 
@@ -210,7 +219,7 @@ const Home: React.FC = () => {
           title="Anime Hits" 
           subtitle="Rising Sun" 
           movies={anime} 
-          loading={loadingAnime && anime.length === 0} 
+          loading={isInitialLoading && anime.length === 0} 
           color="#22d3ee"
         />
 
@@ -218,7 +227,7 @@ const Home: React.FC = () => {
           title="Popular Series" 
           subtitle="Must Watch" 
           movies={tvTrending} 
-          loading={loadingTV && tvTrending.length === 0} 
+          loading={isInitialLoading && tvTrending.length === 0} 
         />
       </div>
     </div>

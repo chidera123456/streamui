@@ -2,62 +2,71 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchAnime } from '../services/tmdbService';
+import { useData } from '../context/DataContext';
 import { Movie } from '../types';
 import { BACKDROP_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
 import { GridSkeleton, HeroSkeleton } from '../components/Skeleton';
 
 const Anime: React.FC = () => {
-  const [hero, setHero] = useState<Movie | null>(null);
-  const [trending, setTrending] = useState<Movie[]>([]);
-  const [action, setAction] = useState<Movie[]>([]);
-  const [fantasy, setFantasy] = useState<Movie[]>([]);
-  
-  const [loadingHero, setLoadingHero] = useState(true);
-  const [loadingTrending, setLoadingTrending] = useState(true);
-  const [loadingAction, setLoadingAction] = useState(true);
-  const [loadingFantasy, setLoadingFantasy] = useState(true);
+  const { animePageData, setAnimePageData } = useData();
+  const [isInitialLoading, setIsInitialLoading] = useState(!animePageData.loaded);
 
   useEffect(() => {
-    // Priority: Trending + Hero
-    fetchAnime(1).then(res => {
-      setTrending(res.results);
-      if (res.results.length > 0) {
-        const validHeroes = res.results.filter(m => m.backdrop_path);
-        const top = validHeroes.length > 0 
-          ? validHeroes[Math.floor(Math.random() * Math.min(3, validHeroes.length))]
-          : res.results[0];
-        setHero(top);
+    // If data is already loaded in the context, do not re-fetch.
+    // This maintains the exact image state and prevents reloading of visual assets.
+    if (animePageData.loaded) {
+      setIsInitialLoading(false);
+      return;
+    }
+
+    const loadData = async () => {
+      try {
+        const trendingPromise = fetchAnime(1).then(res => {
+          const newData: Partial<typeof animePageData> = { trending: res.results };
+          if (!animePageData.hero && res.results.length > 0) {
+            const validHeroes = res.results.filter(m => m.backdrop_path);
+            newData.hero = validHeroes.length > 0 
+              ? validHeroes[Math.floor(Math.random() * Math.min(3, validHeroes.length))]
+              : res.results[0];
+          }
+          setAnimePageData(newData);
+        });
+
+        const actionPromise = fetchAnime(1, 10759).then(res => {
+          setAnimePageData({ action: res.results });
+        });
+
+        const fantasyPromise = fetchAnime(1, 10765).then(res => {
+          setAnimePageData({ fantasy: res.results });
+        });
+
+        await Promise.all([trendingPromise, actionPromise, fantasyPromise]);
+        setAnimePageData({ loaded: true });
+      } catch (err) {
+        console.error("Anime data load failed", err);
+      } finally {
+        setIsInitialLoading(false);
       }
-      setLoadingHero(false);
-      setLoadingTrending(false);
-    });
+    };
 
-    // Sub-genres
-    fetchAnime(1, 10759).then(res => {
-      setAction(res.results);
-      setLoadingAction(false);
-    });
-
-    fetchAnime(1, 10765).then(res => {
-      setFantasy(res.results);
-      setLoadingFantasy(false);
-    });
-
+    loadData();
     window.scrollTo(0, 0);
-  }, []);
+  }, [animePageData.loaded, setAnimePageData, animePageData.hero]);
+
+  const { hero, trending, action, fantasy } = animePageData;
 
   return (
     <div className="pb-20 bg-[#040404]">
       {/* Anime Hero Banner */}
-      {loadingHero ? (
+      {isInitialLoading && !hero ? (
         <HeroSkeleton />
       ) : hero && (
         <section className="relative h-[50vh] md:h-[85vh] w-full overflow-hidden">
           <div className="absolute inset-0">
             <img 
               src={`${BACKDROP_URL}${hero.backdrop_path}`}
-              className="w-full h-full object-cover animate-in fade-in zoom-in-105 duration-1000"
+              className="w-full h-full object-cover"
               alt={hero.name}
               loading="eager"
             />
@@ -108,7 +117,7 @@ const Anime: React.FC = () => {
               </h2>
             </div>
           </div>
-          {loadingTrending ? (
+          {isInitialLoading && trending.length === 0 ? (
             <GridSkeleton count={8} />
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
@@ -128,7 +137,7 @@ const Anime: React.FC = () => {
               </h2>
             </div>
           </div>
-          {loadingAction ? (
+          {isInitialLoading && action.length === 0 ? (
             <GridSkeleton count={8} />
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
@@ -148,7 +157,7 @@ const Anime: React.FC = () => {
               </h2>
             </div>
           </div>
-          {loadingFantasy ? (
+          {isInitialLoading && fantasy.length === 0 ? (
             <GridSkeleton count={8} />
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-4">
