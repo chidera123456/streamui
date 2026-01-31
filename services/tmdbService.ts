@@ -20,7 +20,10 @@ const handleResponse = async (response: Response, cacheKey?: string) => {
   return data;
 };
 
-const getFromCache = (key: string) => {
+/**
+ * Synchronous cache lookup for instant UI hydration
+ */
+export const getFromCache = (key: string) => {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     return cached.data;
@@ -56,8 +59,10 @@ const secureFetch = async (url: string) => {
 export const fetchTrending = async (type: 'movie' | 'tv' | 'all' = 'movie', page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `trending-${type}-${page}`;
   const cached = getFromCache(cacheKey);
-  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: m.media_type || (type === 'all' ? 'movie' : type) })), totalPages: cached.total_pages };
-
+  
+  // We don't return early here because we want to trigger a background revalidation,
+  // but components will use the synchronous getFromCache to prevent flickers.
+  
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/trending/${type}/week?api_key=${TMDB_API_KEY}&page=${page}`);
     const data = await handleResponse(response, cacheKey);
@@ -73,9 +78,6 @@ export const fetchTrending = async (type: 'movie' | 'tv' | 'all' = 'movie', page
 
 export const fetchAwardWinning = async (type: 'movie' | 'tv', page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `award-winning-${type}-${page}`;
-  const cached = getFromCache(cacheKey);
-  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: type })), totalPages: cached.total_pages };
-
   try {
     const minVoteCount = type === 'movie' ? 1000 : 500;
     const url = `${TMDB_BASE_URL}/discover/${type}?api_key=${TMDB_API_KEY}&page=${page}&vote_average.gte=8&vote_count.gte=${minVoteCount}&sort_by=vote_average.desc&include_adult=false`;
@@ -87,15 +89,13 @@ export const fetchAwardWinning = async (type: 'movie' | 'tv', page: number = 1):
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    return { results: [], totalPages: 0 };
+    const oldCache = cache.get(cacheKey);
+    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
   }
 };
 
 export const fetchNetflixContent = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `netflix-originals-${page}`;
-  const cached = getFromCache(cacheKey);
-  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
-
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_networks=213&sort_by=popularity.desc&page=${page}`);
     const data = await handleResponse(response, cacheKey);
@@ -104,15 +104,13 @@ export const fetchNetflixContent = async (page: number = 1): Promise<{ results: 
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    return { results: [], totalPages: 0 };
+    const oldCache = cache.get(cacheKey);
+    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
   }
 };
 
 export const fetchUpcomingMovies = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `upcoming-movies-2026-${page}`;
-  const cached = getFromCache(cacheKey);
-  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: 'movie' })), totalPages: cached.total_pages };
-
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&page=${page}&primary_release_year=2026&sort_by=popularity.desc&include_adult=false`);
     const data = await handleResponse(response, cacheKey);
@@ -121,15 +119,13 @@ export const fetchUpcomingMovies = async (page: number = 1): Promise<{ results: 
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    return { results: [], totalPages: 0 };
+    const oldCache = cache.get(cacheKey);
+    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
   }
 };
 
 export const fetchUpcomingTV = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `upcoming-tv-2026-${page}`;
-  const cached = getFromCache(cacheKey);
-  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
-
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&page=${page}&first_air_date_year=2026&sort_by=popularity.desc&include_adult=false`);
     const data = await handleResponse(response, cacheKey);
@@ -138,7 +134,8 @@ export const fetchUpcomingTV = async (page: number = 1): Promise<{ results: Movi
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    return { results: [], totalPages: 0 };
+    const oldCache = cache.get(cacheKey);
+    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
   }
 };
 
@@ -211,9 +208,6 @@ export const discoverMedia = async (type: 'movie' | 'tv', page: number = 1, filt
 
 export const fetchAnime = async (page: number = 1, subGenre?: number): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `anime-${page}-${subGenre || 'all'}`;
-  const cached = getFromCache(cacheKey);
-  if (cached) return { results: (cached.results || []).map((m: any) => ({ ...m, media_type: 'tv' })), totalPages: cached.total_pages };
-
   try {
     const genres = subGenre ? `16,${subGenre}` : '16';
     const url = `${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&page=${page}&with_genres=${genres}&with_original_language=ja&sort_by=popularity.desc`;
@@ -225,7 +219,8 @@ export const fetchAnime = async (page: number = 1, subGenre?: number): Promise<{
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    return { results: [], totalPages: 0 };
+    const oldCache = cache.get(cacheKey);
+    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
   }
 };
 

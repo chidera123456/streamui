@@ -9,7 +9,6 @@ const Navbar: React.FC = () => {
   
   const isActive = (path: string) => location.pathname === path;
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
-  const avatarUrl = user?.user_metadata?.avatar_url;
   const initial = String(username).charAt(0).toUpperCase();
 
   const navLinks = [
@@ -53,11 +52,7 @@ const Navbar: React.FC = () => {
             className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 p-1 pr-5 pl-1 rounded-full transition-all duration-200 group transform-gpu active:scale-95"
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-sm font-black uppercase text-black shadow-lg shadow-[#1ce783]/10 overflow-hidden">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
-              ) : (
-                initial
-              )}
+              {initial}
             </div>
             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Profile</span>
           </button>

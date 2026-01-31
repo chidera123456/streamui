@@ -1,19 +1,17 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { Link } from 'react-router-dom';
 
 const ProfileModal: React.FC = () => {
-  const { user, isProfileModalOpen, closeProfileModal, logout, updateProfile, uploadAvatar, deleteAvatar } = useAuth();
+  const { user, isProfileModalOpen, closeProfileModal, logout, updateProfile } = useAuth();
   const { watchlist } = useWatchlist();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [updateLoading, setUpdateLoading] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
@@ -35,45 +33,6 @@ const ProfileModal: React.FC = () => {
 
   const handleLogout = async () => {
     await logout();
-  };
-
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleDeleteAvatar = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!window.confirm("Remove your profile picture?")) return;
-    
-    setUploadingAvatar(true);
-    const res = await deleteAvatar();
-    if (res.success) {
-      setMessage({ type: 'success', text: 'Picture removed.' });
-    } else {
-      setMessage({ type: 'error', text: res.message });
-    }
-    setUploadingAvatar(false);
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingAvatar(true);
-    setMessage(null);
-
-    const res = await uploadAvatar(file);
-    if (res.success && res.url) {
-      const updateRes = await updateProfile({ avatar_url: res.url });
-      if (updateRes.success) {
-        setMessage({ type: 'success', text: 'Avatar updated successfully.' });
-      } else {
-        setMessage({ type: 'error', text: updateRes.message });
-      }
-    } else {
-      setMessage({ type: 'error', text: res.message });
-    }
-    setUploadingAvatar(false);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -108,7 +67,6 @@ const ProfileModal: React.FC = () => {
   };
 
   const username = String(user.user_metadata?.username || user.email?.split('@')[0] || 'User');
-  const avatarUrl = user.user_metadata?.avatar_url;
   const initial = username.length > 0 ? username.charAt(0) : 'U';
   
   const joinedDate = user.created_at 
@@ -145,52 +103,9 @@ const ProfileModal: React.FC = () => {
             </svg>
           </button>
 
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            className="hidden" 
-            accept="image/*" 
-            onChange={handleFileChange} 
-          />
-
           <div className="absolute -bottom-10 left-8 p-1 bg-[#141414] rounded-full border-4 border-[#141414] shadow-xl">
-            <div className="relative group">
-              <button 
-                onClick={handleAvatarClick}
-                disabled={uploadingAvatar}
-                className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-3xl font-black uppercase italic tracking-tighter text-black"
-              >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt={username} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                ) : (
-                  initial
-                )}
-                
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-
-                {uploadingAvatar && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                )}
-              </button>
-              
-              {avatarUrl && !uploadingAvatar && (
-                <button 
-                  onClick={handleDeleteAvatar}
-                  className="absolute -top-1 -right-1 bg-red-600 text-white p-1 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
-                  title="Remove Picture"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              )}
+            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-3xl font-black uppercase italic tracking-tighter text-black">
+              {initial}
             </div>
           </div>
         </div>

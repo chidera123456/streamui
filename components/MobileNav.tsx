@@ -9,7 +9,6 @@ const MobileNav: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'U';
-  const avatarUrl = user?.user_metadata?.avatar_url;
   const initial = String(username).charAt(0).toUpperCase();
 
   const links = [
@@ -77,11 +76,7 @@ const MobileNav: React.FC = () => {
         <div className={`p-0.5 rounded-full transition-all ${user ? 'ring-2 ring-[#1ce783]/20 ring-offset-2 ring-offset-[#040404]' : ''}`}>
           {user ? (
             <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-[10px] font-black uppercase text-black shadow-lg overflow-hidden">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
-              ) : (
-                initial
-              )}
+              {initial}
             </div>
           ) : (
             <div className="p-1">

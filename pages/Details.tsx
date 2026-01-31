@@ -7,7 +7,6 @@ import { BACKDROP_URL, IMG_URL, PLAYER_URL, TV_PLAYER_URL } from '../constants';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { useHistory } from '../hooks/useHistory';
 import MediaCard from '../components/MediaCard';
-import CommentSection from '../components/CommentSection';
 
 declare global {
   interface Window {
@@ -108,7 +107,7 @@ const Details: React.FC = () => {
       if (ytPlayerRef.current) ytPlayerRef.current.destroy();
       if (sleepIntervalRef.current) window.clearInterval(sleepIntervalRef.current);
     };
-  }, [id, type]); // removed lastWatched to prevent loop, only initial load
+  }, [id, type]);
 
   // Auto-scroll to current episode in list
   useEffect(() => {
@@ -169,11 +168,9 @@ const Details: React.FC = () => {
     setCurrentSeason(season);
     const data = await getSeasonEpisodes(Number(id), season);
     setEpisodes(data);
-    // If it's the season we previously watched, reset to last episode, otherwise ep 1
     const resumeEp = (lastWatched?.season === season) ? lastWatched.episode || 1 : 1;
     setCurrentEpisode(resumeEp);
     
-    // Pre-fetch surrounding seasons
     if (media && season < media.number_of_seasons!) getSeasonEpisodes(Number(id), season + 1);
     if (season > 1) getSeasonEpisodes(Number(id), season - 1);
   };
@@ -207,7 +204,6 @@ const Details: React.FC = () => {
 
   const isEpisodeWatched = (epNumber: number) => {
     if (!lastWatched) return false;
-    // Simple logic: If we've watched a later episode in this season, or a later season entirely
     if (lastWatched.season! > currentSeason) return true;
     if (lastWatched.season === currentSeason && lastWatched.episode! >= epNumber) return true;
     return false;
@@ -259,7 +255,6 @@ const Details: React.FC = () => {
                 </div>
               )}
             </div>
-            {/* Quick Next Button in Player */}
             {type === 'tv' && (
               <button 
                 onClick={nextEpisode}
@@ -383,7 +378,6 @@ const Details: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Smarter Episode List: Better scrolling, snap behavior, and watched indicators */}
                 <div 
                   ref={episodeListRef}
                   className="flex flex-nowrap overflow-x-auto gap-4 md:gap-6 pb-6 custom-scrollbar scroll-smooth snap-x snap-mandatory"
@@ -410,7 +404,6 @@ const Details: React.FC = () => {
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                             </div>
                           )}
-                          {/* Progress Indicator */}
                           {isActive && (
                             <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-[#1ce783] animate-pulse"></div>
                           )}
@@ -425,14 +418,11 @@ const Details: React.FC = () => {
                       </div>
                     );
                   })}
-                  {/* Empty space for scroll padding */}
                   <div className="min-w-[40px] shrink-0"></div>
                 </div>
               </section>
             )}
 
-            <CommentSection mediaId={media?.id || 0} mediaType={type || 'movie'} mediaTitle={media?.title || media?.name} />
-            
             <section className="space-y-8 pt-12">
               <div className="border-b border-white/10 pb-4">
                   <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">Recommended</h2>
