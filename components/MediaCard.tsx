@@ -53,17 +53,20 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false }) => {
             </div>
           </div>
           
-          {/* Quick Add Button */}
+          {/* Quick Add Button - Always Visible */}
           <button 
             onClick={handleWatchlist}
-            className={`absolute top-2 left-2 z-20 p-2 rounded-full backdrop-blur-md border transition-all duration-300 transform group-hover:scale-100 scale-0 ${
-              inList ? 'bg-[#1ce783] border-[#1ce783] text-black' : 'bg-black/60 border-white/20 text-white hover:bg-white hover:text-black'
+            aria-label={inList ? "Remove from watchlist" : "Add to watchlist"}
+            className={`absolute top-2 left-2 z-20 p-2 rounded-full backdrop-blur-md border transition-all duration-300 transform hover:scale-110 active:scale-90 ${
+              inList 
+                ? 'bg-[#1ce783] border-[#1ce783] text-black shadow-lg shadow-[#1ce783]/20' 
+                : 'bg-black/40 border-white/20 text-white hover:bg-white hover:text-black'
             }`}
           >
             {inList ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
             )}
           </button>
 
