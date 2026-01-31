@@ -14,6 +14,7 @@ interface DataContextType {
   historyLoading: boolean;
   toggleWatchlist: (movie: Movie) => Promise<void>;
   addToHistory: (movie: Movie, season?: number, episode?: number) => Promise<void>;
+  removeFromHistory: (mediaId: number) => Promise<void>;
   clearHistory: () => Promise<void>;
   isInWatchlist: (id: number) => boolean;
   markNotificationsAsRead: () => void;
@@ -60,10 +61,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(NOTIFICATIONS_CACHE_KEY, JSON.stringify(notifications));
   }, [notifications]);
 
-  // Automated notification generation logic
   useEffect(() => {
     const generateNotifications = async () => {
-      // 1. App Tips (if empty or periodically)
       const tips: Notification[] = [
         {
           id: 'tip-sleep-timer',
@@ -85,7 +84,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       ];
 
-      // 2. Fresh Releases from TMDB
       const nowPlaying = await fetchNowPlaying();
       const movieNotifications: Notification[] = nowPlaying.slice(0, 3).map(m => ({
         id: `release-${m.id}`,
@@ -241,6 +239,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const removeFromHistory = async (mediaId: number) => {
+    setHistory(prev => prev.filter(h => h.media_id !== mediaId));
+    
+    if (!user) return;
+    
+    try {
+      await supabase.from('watch_history').delete().eq('user_id', user.id).eq('media_id', mediaId);
+    } catch (err) {
+      console.debug("Failed to remove from cloud history");
+    }
+  };
+
   const clearHistory = async () => {
     setHistory([]);
     if (user) {
@@ -257,7 +267,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <DataContext.Provider value={{ 
       watchlist, history, notifications, watchlistLoading, historyLoading, 
-      toggleWatchlist, addToHistory, clearHistory, isInWatchlist, markNotificationsAsRead, refreshData 
+      toggleWatchlist, addToHistory, removeFromHistory, clearHistory, isInWatchlist, markNotificationsAsRead, refreshData 
     }}>
       {children}
     </DataContext.Provider>

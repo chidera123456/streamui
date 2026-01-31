@@ -15,6 +15,13 @@ declare global {
   }
 }
 
+const SERVERS = [
+  { name: 'Primary (CC)', host: 'vidsrc.cc' },
+  { name: 'Stable (TO)', host: 'vidsrc.to' },
+  { name: 'Fast (ME)', host: 'vidsrc.me' },
+  { name: 'Mirror (XYZ)', host: 'vidsrc.xyz' }
+];
+
 const Details: React.FC = () => {
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
   const navigate = useNavigate();
@@ -34,6 +41,7 @@ const Details: React.FC = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [sleepTimeRemaining, setSleepTimeRemaining] = useState<number | null>(null);
   const [showTimerMenu, setShowTimerMenu] = useState(false);
+  const [currentServer, setCurrentServer] = useState(SERVERS[0]);
   
   const previewTimerRef = useRef<number | null>(null);
   const sleepIntervalRef = useRef<number | null>(null);
@@ -41,11 +49,12 @@ const Details: React.FC = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const episodeListRef = useRef<HTMLDivElement>(null);
 
-  // Smart Discovery: Find the last watched episode for this series in history
+  const isTv = type?.toLowerCase() === 'tv';
+
   const lastWatched = useMemo(() => {
-    if (type !== 'tv' || !history) return null;
+    if (!isTv || !history) return null;
     return history.find(h => h.media_id === Number(id));
-  }, [history, id, type]);
+  }, [history, id, isTv]);
 
   useEffect(() => {
     if (!window.YT) {
@@ -58,6 +67,7 @@ const Details: React.FC = () => {
 
   useEffect(() => {
     if (!id || !type) return;
+    
     const loadMedia = async () => {
       setLoading(true);
       setSimilarMedia([]);
@@ -66,27 +76,25 @@ const Details: React.FC = () => {
       setSleepTimeRemaining(null);
       
       try {
-        const data = await getDetails(Number(id), type);
+        const data = await getDetails(Number(id), type as 'movie' | 'tv');
         setMedia(data);
         
-        // Smart Resume: Set initial season/episode from history
         const initialSeason = lastWatched?.season || 1;
         const initialEpisode = lastWatched?.episode || 1;
         
         setCurrentSeason(initialSeason);
         setCurrentEpisode(initialEpisode);
 
-        if (type === 'tv' && data.number_of_seasons) {
+        if (isTv && data.number_of_seasons) {
           const epData = await getSeasonEpisodes(Number(id), initialSeason);
           setEpisodes(epData);
           
-          // Pre-fetch next season if it exists for faster navigation later
           if (initialSeason < data.number_of_seasons) {
             getSeasonEpisodes(Number(id), initialSeason + 1);
           }
         }
 
-        loadRecommendations(Number(id), type);
+        loadRecommendations(Number(id), type as 'movie' | 'tv');
 
         if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
         previewTimerRef.current = window.setTimeout(() => {
@@ -99,6 +107,7 @@ const Details: React.FC = () => {
         setLoading(false);
       }
     };
+    
     loadMedia();
     window.scrollTo(0, 0);
 
@@ -107,9 +116,8 @@ const Details: React.FC = () => {
       if (ytPlayerRef.current) ytPlayerRef.current.destroy();
       if (sleepIntervalRef.current) window.clearInterval(sleepIntervalRef.current);
     };
-  }, [id, type, lastWatched]);
+  }, [id, type]);
 
-  // Auto-scroll to current episode in list
   useEffect(() => {
     if (episodes.length > 0 && episodeListRef.current) {
       const activeEl = episodeListRef.current.querySelector(`[data-episode="${currentEpisode}"]`);
@@ -172,7 +180,6 @@ const Details: React.FC = () => {
     setCurrentEpisode(resumeEp);
     
     if (media && season < media.number_of_seasons!) getSeasonEpisodes(Number(id), season + 1);
-    if (season > 1) getSeasonEpisodes(Number(id), season - 1);
   };
 
   const playMedia = (ep?: number) => {
@@ -184,7 +191,7 @@ const Details: React.FC = () => {
     setIsPlaying(true);
     
     if (media) {
-      addToHistory(media, type === 'tv' ? currentSeason : undefined, epToPlay);
+      addToHistory(media, isTv ? currentSeason : undefined, epToPlay);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -213,9 +220,9 @@ const Details: React.FC = () => {
   const trailer = media?.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer') || 
                   media?.videos?.results?.find(v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip'));
 
-  const embedUrl = type === 'movie' 
-    ? `${PLAYER_URL}/${media?.id}`
-    : `${TV_PLAYER_URL}/${media?.id}/${currentSeason}/${currentEpisode}`;
+  const embedUrl = isTv 
+    ? `https://${currentServer.host}/v2/embed/tv/${id}/${currentSeason}/${currentEpisode}`
+    : `https://${currentServer.host}/v2/embed/movie/${id}`;
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
   const backgroundTrailerUrl = trailer 
@@ -224,62 +231,51 @@ const Details: React.FC = () => {
 
   return (
     <div className="min-h-screen pt-16 md:pt-20 pb-20 bg-[#040404]">
-      {/* Integrated Hero and Player Container */}
       <div className="relative h-[60vh] md:h-[90vh] w-full bg-black overflow-hidden shadow-2xl">
         {loading || !media ? (
           <div className="absolute inset-0 bg-[#0a0a0a] animate-pulse" />
         ) : isPlaying ? (
-          /* Active Player View */
           <div className="w-full h-full group/player relative animate-in fade-in duration-500">
-            {playerLoading && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a] z-20">
-                <div className="w-12 h-12 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            )}
-            
-            {/* Player Overlay Controls */}
             <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity duration-300">
-              <div className="relative">
-                <button 
-                  onClick={() => setShowTimerMenu(!showTimerMenu)}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${showTimerMenu || sleepTimeRemaining !== null ? 'bg-[#1ce783] text-black shadow-lg shadow-[#1ce783]/20' : 'bg-black/40 backdrop-blur-md text-white border border-white/10 hover:bg-white/10'}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                </button>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowTimerMenu(!showTimerMenu)}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${showTimerMenu || sleepTimeRemaining !== null ? 'bg-[#1ce783] text-black shadow-lg shadow-[#1ce783]/20' : 'bg-black/40 backdrop-blur-md text-white border border-white/10 hover:bg-white/10'}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  </button>
 
-                {showTimerMenu && (
-                  <div className="absolute top-full right-0 mt-2 w-48 bg-[#0c0c0c]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl animate-in zoom-in-95 fade-in duration-200">
-                    <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest p-2 mb-1">Set Sleep Timer</p>
-                    {[1, 15, 30, 45, 60].map(mins => (
-                      <button key={mins} onClick={() => handleSetSleepTimer(mins)} className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-[#1ce783] hover:text-black transition-all text-xs font-black uppercase tracking-widest text-gray-300">
-                        {mins} {mins === 1 ? 'Minute' : 'Minutes'}
-                      </button>
-                    ))}
-                    <button onClick={() => handleSetSleepTimer(null)} className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-red-500/20 text-red-500 transition-all text-xs font-black uppercase tracking-widest mt-1 border-t border-white/5 pt-2">Turn Off</button>
-                  </div>
-                )}
+                  {showTimerMenu && (
+                    <div className="absolute top-full right-0 mt-2 w-48 bg-[#0c0c0c]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl animate-in zoom-in-95 fade-in duration-200">
+                      <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest p-2 mb-1">Set Sleep Timer</p>
+                      {[1, 15, 30, 45, 60].map(mins => (
+                        <button key={mins} onClick={() => handleSetSleepTimer(mins)} className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-[#1ce783] hover:text-black transition-all text-xs font-black uppercase tracking-widest text-gray-300">
+                          {mins} {mins === 1 ? 'Minute' : 'Minutes'}
+                        </button>
+                      ))}
+                      <button onClick={() => handleSetSleepTimer(null)} className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-red-500/20 text-red-500 transition-all text-xs font-black uppercase tracking-widest mt-1 border-t border-white/5 pt-2">Turn Off</button>
+                    </div>
+                  )}
+                </div>
               </div>
               
-              {type === 'tv' && (
-                <button 
-                  onClick={nextEpisode}
-                  className="bg-black/40 backdrop-blur-md text-white border border-white/10 hover:bg-[#1ce783] hover:text-black px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all"
-                >
-                  Next Episode
-                </button>
-              )}
-
-              <button 
-                onClick={() => setIsPlaying(false)}
-                className="bg-red-600/20 backdrop-blur-md text-red-500 border border-red-600/30 hover:bg-red-600 hover:text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all"
-              >
-                Close Player
-              </button>
+              <div className="flex items-center gap-2">
+                {isTv && (
+                  <button 
+                    onClick={nextEpisode}
+                    className="bg-black/40 backdrop-blur-md text-white border border-white/10 hover:bg-[#1ce783] hover:text-black px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all"
+                  >
+                    Next Episode
+                  </button>
+                )}
+              </div>
             </div>
 
             <iframe 
+              key={embedUrl}
               src={embedUrl}
               className="w-full h-full"
               frameBorder="0"
@@ -289,7 +285,6 @@ const Details: React.FC = () => {
             />
           </div>
         ) : (
-          /* Hero / Details Overview View */
           <>
             <div className={`absolute inset-0 z-0 transition-opacity duration-[1500ms] ${autoPreviewActive && trailer ? 'opacity-0' : 'opacity-100'}`}>
               <img src={`${BACKDROP_URL}${media.backdrop_path}`} alt="" className="w-full h-full object-cover object-top" />
@@ -351,7 +346,6 @@ const Details: React.FC = () => {
         )}
       </div>
 
-      {/* Main Details Body */}
       <div className="max-w-7xl mx-auto px-6 md:px-16 py-10 md:py-16">
         <div className="space-y-12 md:space-y-16">
           <section>
@@ -367,7 +361,7 @@ const Details: React.FC = () => {
             <p className="text-gray-200 text-sm md:text-lg leading-relaxed max-w-5xl">{media?.overview}</p>
           </section>
 
-          {type === 'tv' && media && (
+          {isTv && media && (
             <section className="space-y-6 md:space-y-8">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div className="flex items-center gap-4">
@@ -411,7 +405,7 @@ const Details: React.FC = () => {
                         </div>
                         {watched && !isActive && (
                           <div className="absolute top-2 right-2 bg-[#1ce783] text-black p-1 rounded-full shadow-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3_3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                           </div>
                         )}
                         {isActive && (

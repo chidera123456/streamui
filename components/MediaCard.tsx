@@ -8,9 +8,10 @@ import { IMG_URL } from '../constants';
 interface Props {
   media: Movie;
   priority?: boolean;
+  onRemove?: (e: React.MouseEvent) => void;
 }
 
-const MediaCard: React.FC<Props> = memo(({ media, priority = false }) => {
+const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const [isHovered, setIsHovered] = useState(false);
   
@@ -53,7 +54,20 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false }) => {
             </div>
           </div>
           
-          {/* Quick Add Button - Always Visible */}
+          {/* Remove Button (If handler provided) */}
+          {onRemove && (
+            <button 
+              onClick={onRemove}
+              className="absolute top-2 right-2 z-30 p-1.5 rounded-full bg-black/60 text-white hover:bg-red-500 hover:text-white transition-all transform active:scale-90 opacity-0 group-hover:opacity-100 border border-white/10"
+              title="Remove from history"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+
+          {/* Quick Add Button */}
           <button 
             onClick={handleWatchlist}
             aria-label={inList ? "Remove from watchlist" : "Add to watchlist"}

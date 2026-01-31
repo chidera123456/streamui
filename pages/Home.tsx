@@ -8,7 +8,13 @@ import { BACKDROP_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
 import { HeroSkeleton, GridSkeleton } from '../components/Skeleton';
 
-const HorizontalSection: React.FC<{ title: string; subtitle?: string; movies: Movie[]; color?: string }> = ({ title, subtitle, movies, color = "#1ce783" }) => {
+const HorizontalSection: React.FC<{ 
+  title: string; 
+  subtitle?: string; 
+  movies: Movie[]; 
+  color?: string;
+  onRemoveItem?: (id: number) => void;
+}> = ({ title, subtitle, movies, color = "#1ce783", onRemoveItem }) => {
   if (movies.length === 0) return null;
 
   return (
@@ -24,8 +30,15 @@ const HorizontalSection: React.FC<{ title: string; subtitle?: string; movies: Mo
       
       <div className="flex overflow-x-auto gap-4 md:gap-6 px-6 md:px-16 pb-6 hide-scrollbar snap-x snap-mandatory">
         {movies.map((item) => (
-          <div key={`${item.id}-${item.media_type}`} className="min-w-[140px] md:min-w-[180px] lg:min-w-[200px] snap-start">
-            <MediaCard media={item} />
+          /* Fixed width and shrink-0 ensure posters stay the same size even when others are removed */
+          <div key={`${item.id}-${item.media_type}`} className="w-[150px] md:w-[200px] lg:w-[220px] shrink-0 snap-start">
+            <MediaCard 
+              media={item} 
+              onRemove={onRemoveItem ? (e) => {
+                e.preventDefault();
+                onRemoveItem(item.id);
+              } : undefined}
+            />
           </div>
         ))}
       </div>
@@ -66,7 +79,7 @@ const MediaSection: React.FC<{ title: string; subtitle?: string; movies: Movie[]
 };
 
 const Home: React.FC = () => {
-  const { history } = useHistory();
+  const { history, removeFromHistory } = useHistory();
   const rotationTimerRef = useRef<number | null>(null);
   
   const [trending, setTrending] = useState<Movie[]>(() => getFromCache('trending-movie-1')?.results || []);
@@ -75,7 +88,6 @@ const Home: React.FC = () => {
   const [anime, setAnime] = useState<Movie[]>(() => getFromCache('anime-1-all')?.results || []);
   const [awardWinning, setAwardWinning] = useState<Movie[]>(() => getFromCache('award-winning-movie-1')?.results || []);
   
-  // Initialize with a random index to satisfy "change after reloading app"
   const [heroIndex, setHeroIndex] = useState(() => Math.floor(Math.random() * 10));
   
   const [loadingTrending, setLoadingTrending] = useState(trending.length === 0);
@@ -133,10 +145,8 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     if (heroList.length > 0) {
-      // Clear existing interval if any
       if (rotationTimerRef.current) clearInterval(rotationTimerRef.current);
       
-      // Set interval for 3 minutes (180,000 ms)
       rotationTimerRef.current = window.setInterval(() => {
         setHeroIndex(prev => (prev + 1));
       }, 180000);
@@ -148,7 +158,6 @@ const Home: React.FC = () => {
 
   return (
     <div className="pb-20">
-      {/* Hero Section */}
       {!hero && (loadingTrending) ? (
         <HeroSkeleton />
       ) : hero && (
@@ -203,6 +212,7 @@ const Home: React.FC = () => {
             title="Continue Watching" 
             movies={history.map(h => h.media_data)} 
             color="#06b6d4" 
+            onRemoveItem={(id) => removeFromHistory(id)}
           />
         )}
 
