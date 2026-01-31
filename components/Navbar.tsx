@@ -1,16 +1,23 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
+import NotificationPanel from './NotificationPanel';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
   const { user, openAuthModal, openProfileModal } = useAuth();
+  const { notifications, markNotificationsAsRead } = useData();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const navRef = useRef<HTMLDivElement>(null);
   
   const isActive = (path: string) => location.pathname === path;
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
   const initial = String(username).charAt(0).toUpperCase();
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const navLinks = [
     { path: '/', label: 'Home' },
@@ -21,25 +28,38 @@ const Navbar: React.FC = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 20) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
+      setIsScrolled(window.scrollY > 20);
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setShowNotifs(false);
       }
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
+
+  const handleToggleNotifs = () => {
+    if (!showNotifs) {
+      markNotificationsAsRead();
+    }
+    setShowNotifs(!showNotifs);
+  };
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const isHomePage = location.pathname === '/';
 
-  // Hide Navbar on mobile if not on home page (as per existing logic)
   if (isMobile && !isHomePage) return null;
 
   return (
     <nav 
+      ref={navRef}
       className={`fixed top-0 left-0 right-0 h-16 md:h-20 z-[100] px-4 md:px-12 flex items-center justify-between transition-colors duration-500 ease-in-out ${
         isScrolled ? 'bg-[#040404]' : 'bg-gradient-to-b from-black/80 to-transparent'
       }`}
@@ -67,18 +87,27 @@ const Navbar: React.FC = () => {
       </div>
 
       <div className="hidden md:flex items-center gap-6">
-        {/* Mock Search/Notifications for Netflix vibe */}
         <div className="flex items-center gap-5 text-white mr-2">
           <Link to="/search" className="hover:scale-110 transition-transform">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </Link>
-          <button className="hover:scale-110 transition-transform">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          </button>
+          
+          <div className="relative">
+            <button 
+              onClick={handleToggleNotifs}
+              className={`hover:scale-110 transition-transform relative ${showNotifs ? 'text-[#1ce783]' : 'text-white'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-600 rounded-full border border-black animate-pulse"></span>
+              )}
+            </button>
+            {showNotifs && <NotificationPanel onClose={() => setShowNotifs(false)} />}
+          </div>
         </div>
 
         {user ? (

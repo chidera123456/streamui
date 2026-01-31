@@ -38,6 +38,17 @@ export interface Movie {
   };
 }
 
+export interface Notification {
+  id: string;
+  type: 'release' | 'tip' | 'alert';
+  title: string;
+  message: string;
+  timestamp: string;
+  isRead: boolean;
+  image?: string;
+  link?: string;
+}
+
 export interface HistoryItem {
   id: string;
   user_id: string;
@@ -71,7 +82,6 @@ export interface AISuggestion {
   reason: string;
 }
 
-// Added missing Comment interface for social and discussion features
 export interface Comment {
   id: string;
   user_id: string;

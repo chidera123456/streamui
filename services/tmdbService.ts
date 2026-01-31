@@ -2,7 +2,6 @@
 import { TMDB_API_KEY, TMDB_BASE_URL } from '../constants.ts';
 import { Movie, Episode } from '../types.ts';
 
-// Extended in-memory cache for ultra-smooth navigation
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 1000 * 60 * 30; // 30 minutes
 
@@ -20,9 +19,6 @@ const handleResponse = async (response: Response, cacheKey?: string) => {
   return data;
 };
 
-/**
- * Synchronous cache lookup for instant UI hydration
- */
 export const getFromCache = (key: string) => {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -31,9 +27,6 @@ export const getFromCache = (key: string) => {
   return null;
 };
 
-/**
- * Standardized fetch for TMDB with offline protection and timeout.
- */
 const secureFetch = async (url: string) => {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     throw new Error('OFFLINE');
@@ -56,13 +49,19 @@ const secureFetch = async (url: string) => {
   }
 };
 
+export const fetchNowPlaying = async (): Promise<Movie[]> => {
+  const cacheKey = `now-playing`;
+  try {
+    const response = await secureFetch(`${TMDB_BASE_URL}/movie/now_playing?api_key=${TMDB_API_KEY}&region=US`);
+    const data = await handleResponse(response, cacheKey);
+    return (data.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
+  } catch (err) {
+    return [];
+  }
+};
+
 export const fetchTrending = async (type: 'movie' | 'tv' | 'all' = 'movie', page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
   const cacheKey = `trending-${type}-${page}`;
-  const cached = getFromCache(cacheKey);
-  
-  // We don't return early here because we want to trigger a background revalidation,
-  // but components will use the synchronous getFromCache to prevent flickers.
-  
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/trending/${type}/week?api_key=${TMDB_API_KEY}&page=${page}`);
     const data = await handleResponse(response, cacheKey);
@@ -281,7 +280,6 @@ export const findByTitle = async (title: string): Promise<Movie | null> => {
   return null;
 };
 
-// Internal utility to check if data is cached
 export const isCached = (key: string): boolean => {
   return !!getFromCache(key);
 };

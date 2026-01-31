@@ -2,17 +2,21 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from './AuthContext';
-import { Movie, HistoryItem } from '../types';
+import { Movie, HistoryItem, Notification } from '../types';
+import { fetchNowPlaying } from '../services/tmdbService';
+import { IMG_URL } from '../constants';
 
 interface DataContextType {
   watchlist: Movie[];
   history: HistoryItem[];
+  notifications: Notification[];
   watchlistLoading: boolean;
   historyLoading: boolean;
   toggleWatchlist: (movie: Movie) => Promise<void>;
   addToHistory: (movie: Movie, season?: number, episode?: number) => Promise<void>;
   clearHistory: () => Promise<void>;
   isInWatchlist: (id: number) => boolean;
+  markNotificationsAsRead: () => void;
   refreshData: () => Promise<void>;
 }
 
@@ -20,12 +24,12 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 const WATCHLIST_CACHE_KEY = 'zenstream_watchlist_v4';
 const HISTORY_CACHE_KEY = 'zenstream_history_v4';
+const NOTIFICATIONS_CACHE_KEY = 'zenstream_notifs_v1';
 const MAX_HISTORY = 20;
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   
-  // Local-First State: Initialize from localStorage for zero-latency startup
   const [watchlist, setWatchlist] = useState<Movie[]>(() => {
     const cached = localStorage.getItem(WATCHLIST_CACHE_KEY);
     return cached ? JSON.parse(cached) : [];
@@ -36,10 +40,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return cached ? JSON.parse(cached) : [];
   });
 
+  const [notifications, setNotifications] = useState<Notification[]>(() => {
+    const cached = localStorage.getItem(NOTIFICATIONS_CACHE_KEY);
+    return cached ? JSON.parse(cached) : [];
+  });
+
   const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  // Persistence: Sync state to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(WATCHLIST_CACHE_KEY, JSON.stringify(watchlist));
   }, [watchlist]);
@@ -47,6 +55,59 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     localStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(history));
   }, [history]);
+
+  useEffect(() => {
+    localStorage.setItem(NOTIFICATIONS_CACHE_KEY, JSON.stringify(notifications));
+  }, [notifications]);
+
+  // Automated notification generation logic
+  useEffect(() => {
+    const generateNotifications = async () => {
+      // 1. App Tips (if empty or periodically)
+      const tips: Notification[] = [
+        {
+          id: 'tip-sleep-timer',
+          type: 'tip',
+          title: 'Pro Tip: Sleep Timer',
+          message: 'Did you know you can set a sleep timer in the player? Click the moon icon to try it out.',
+          timestamp: new Date().toISOString(),
+          isRead: false,
+          link: '/'
+        },
+        {
+          id: 'tip-ai-discovery',
+          type: 'tip',
+          title: 'Explore AI Discovery',
+          message: 'Having trouble choosing? Describe your mood in the AI Discovery section for personalized picks.',
+          timestamp: new Date().toISOString(),
+          isRead: false,
+          link: '/ai-discovery'
+        }
+      ];
+
+      // 2. Fresh Releases from TMDB
+      const nowPlaying = await fetchNowPlaying();
+      const movieNotifications: Notification[] = nowPlaying.slice(0, 3).map(m => ({
+        id: `release-${m.id}`,
+        type: 'release',
+        title: `Now Playing: ${m.title}`,
+        message: `${m.title} is now streaming in theaters and on platforms. Check it out!`,
+        timestamp: new Date().toISOString(),
+        isRead: false,
+        image: `${IMG_URL}${m.poster_path}`,
+        link: `/details/movie/${m.id}`
+      }));
+
+      setNotifications(prev => {
+        const existingIds = new Set(prev.map(n => n.id));
+        const newNotifs = [...movieNotifications, ...tips].filter(n => !existingIds.has(n.id));
+        if (newNotifs.length === 0) return prev;
+        return [...newNotifs, ...prev].slice(0, 15);
+      });
+    };
+
+    generateNotifications();
+  }, []);
 
   const fetchWatchlist = useCallback(async () => {
     if (!user) return;
@@ -98,12 +159,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHistoryLoading(false);
   }, [user, fetchWatchlist, fetchHistory]);
 
-  // Sync on Login/User Change
   useEffect(() => {
     if (user) {
       refreshData();
       
-      // Real-time subscriptions for cross-device sync
       const watchlistChannel = supabase.channel(`public:watchlist:user=${user.id}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'watchlist', filter: `user_id=eq.${user.id}` }, fetchWatchlist)
         .subscribe();
@@ -116,16 +175,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supabase.removeChannel(watchlistChannel);
         supabase.removeChannel(historyChannel);
       };
-    } else {
-      // If user logs out, clear state (but keep local storage for guest if you want, or clear it)
-      // For now, keep local for guest experience
     }
   }, [user, fetchWatchlist, fetchHistory, refreshData]);
 
   const toggleWatchlist = async (movie: Movie) => {
     const exists = watchlist.find(m => m.id === movie.id);
     
-    // Optimistic Update
     if (exists) {
       setWatchlist(prev => prev.filter(m => m.id !== movie.id));
     } else {
@@ -146,7 +201,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     } catch (err) {
-      // Revert on failure
       if (exists) setWatchlist(prev => [...prev, movie]);
       else setWatchlist(prev => prev.filter(m => m.id !== movie.id));
     }
@@ -165,7 +219,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       episode
     };
 
-    // Optimistic Update
     setHistory(prev => {
       const filtered = prev.filter(h => h.media_id !== movie.id);
       return [newItem, ...filtered].slice(0, MAX_HISTORY);
@@ -195,12 +248,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const markNotificationsAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
   const isInWatchlist = (id: number) => watchlist.some(m => m.id === id);
 
   return (
     <DataContext.Provider value={{ 
-      watchlist, history, watchlistLoading, historyLoading, 
-      toggleWatchlist, addToHistory, clearHistory, isInWatchlist, refreshData 
+      watchlist, history, notifications, watchlistLoading, historyLoading, 
+      toggleWatchlist, addToHistory, clearHistory, isInWatchlist, markNotificationsAsRead, refreshData 
     }}>
       {children}
     </DataContext.Provider>
