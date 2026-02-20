@@ -95,22 +95,22 @@ const Anime: React.FC = () => {
                 Action • Fantasy • Anime
               </span>
             </div>
-            <h1 key={`h1-${hero.id}`} className="text-4xl md:text-8xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700">
+            <h1 key={`h1-${hero.id}`} className="text-3xl md:text-7xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700">
               {hero.name}
             </h1>
-            <p key={`p-${hero.id}`} className="text-gray-300 text-xs md:text-lg max-w-2xl line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
+            <p key={`p-${hero.id}`} className="text-gray-300 text-[10px] md:text-base max-w-xl line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
               {hero.overview}
             </p>
-            <div className="flex items-center gap-4 pt-4 animate-in slide-in-from-bottom-4 duration-1000">
+            <div className="flex items-center gap-4 pt-2 animate-in slide-in-from-bottom-4 duration-1000">
               <Link 
                 to={`/details/tv/${hero.id}`}
-                className="bg-[#1ce783] text-black px-10 md:px-16 py-3 md:py-4 rounded-sm font-black text-xs md:text-base uppercase tracking-widest hover:bg-white transition-all transform active:scale-95 shadow-2xl"
+                className="bg-[#1ce783] text-black px-8 md:px-12 py-2.5 md:py-3 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest hover:bg-white transition-all transform active:scale-95 shadow-2xl"
               >
                 Watch Now
               </Link>
               <Link 
                 to={`/details/tv/${hero.id}`}
-                className="bg-white/10 backdrop-blur-md text-white px-8 md:px-12 py-3 md:py-4 rounded-sm font-black text-xs md:text-base uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
+                className="bg-white/10 backdrop-blur-md text-white px-6 md:px-10 py-2.5 md:py-3 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
               >
                 Details
               </Link>
