@@ -1,5 +1,5 @@
 
-import React, { memo } from 'react';
+import React, { useState, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Movie } from '../types';
 import { useWatchlist } from '../hooks/useWatchlist';
