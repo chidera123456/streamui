@@ -7,7 +7,8 @@ import {
   fetchNetflixContent, 
   fetchAnime, 
   fetchUpcomingMovies, 
-  fetchUpcomingTV 
+  fetchUpcomingTV,
+  fetchComedyTV
 } from '../services/tmdbService';
 import { Movie } from '../types';
 import MediaCard from '../components/MediaCard';
@@ -70,6 +71,12 @@ const Category: React.FC = () => {
           setSubtitle('Must Watch');
           setColor('#1ce783');
           result = await fetchTrending('tv', pageNum);
+          break;
+        case 'comedy-tv':
+          setTitle('Comedy Series');
+          setSubtitle('Laughter Guaranteed');
+          setColor('#f472b6');
+          result = await fetchComedyTV(pageNum);
           break;
         case 'upcoming-movies':
           setTitle('Upcoming Movies');

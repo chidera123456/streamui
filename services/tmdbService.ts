@@ -223,6 +223,21 @@ export const fetchAnime = async (page: number = 1, subGenre?: number): Promise<{
   }
 };
 
+export const fetchComedyTV = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
+  const cacheKey = `comedy-tv-${page}`;
+  try {
+    const response = await secureFetch(`${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_genres=35&sort_by=popularity.desc&page=${page}`);
+    const data = await handleResponse(response, cacheKey);
+    return {
+      results: (data.results || []).map((m: any) => ({ ...m, media_type: 'tv' })),
+      totalPages: data.total_pages || 1
+    };
+  } catch (err) {
+    const oldCache = cache.get(cacheKey);
+    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+  }
+};
+
 export const getDetails = async (id: number, type: 'movie' | 'tv'): Promise<Movie> => {
   const cacheKey = `details-${type}-${id}`;
   const cached = getFromCache(cacheKey);

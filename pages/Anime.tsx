@@ -2,12 +2,14 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchAnime, getFromCache } from '../services/tmdbService';
+import { useWatchlist } from '../hooks/useWatchlist';
 import { Movie } from '../types';
 import { BACKDROP_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
 import { GridSkeleton, HeroSkeleton } from '../components/Skeleton';
 
 const Anime: React.FC = () => {
+  const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const rotationTimerRef = useRef<number | null>(null);
   
   const [trending, setTrending] = useState<Movie[]>(() => getFromCache('anime-1-all')?.results || []);
@@ -74,7 +76,7 @@ const Anime: React.FC = () => {
       {!hero && loadingTrending ? (
         <HeroSkeleton />
       ) : hero && (
-        <section className="relative h-[70vh] md:h-[90vh] w-full overflow-hidden">
+        <section className="relative h-[65vh] md:h-[80vh] w-full overflow-hidden">
           <div className="absolute inset-0">
             <img 
               key={hero.id}
@@ -87,7 +89,7 @@ const Anime: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent" />
           </div>
           
-          <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
+          <div className="absolute top-24 md:top-32 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
             <div className="flex items-center gap-3 animate-in fade-in duration-700">
               <span className="text-[#1ce783] text-sm md:text-lg font-black">★ {hero.vote_average.toFixed(1)}</span>
               <div className="h-[1px] w-8 bg-white/20"></div>
@@ -101,19 +103,19 @@ const Anime: React.FC = () => {
             <p key={`p-${hero.id}`} className="text-gray-300 text-[10px] md:text-base max-w-xl line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
               {hero.overview}
             </p>
-            <div className="flex items-center gap-4 pt-2 animate-in slide-in-from-bottom-4 duration-1000">
+            <div className="flex items-center gap-2 pt-2 animate-in slide-in-from-bottom-4 duration-1000 w-full md:w-auto">
               <Link 
                 to={`/details/tv/${hero.id}`}
-                className="bg-[#1ce783] text-black px-8 md:px-12 py-2.5 md:py-3 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest hover:bg-white transition-all transform active:scale-95 shadow-2xl"
+                className="flex-1 md:flex-none bg-white text-black px-6 md:px-10 py-2 md:py-2.5 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest hover:bg-[#1ce783] transition-all transform active:scale-95 shadow-2xl whitespace-nowrap text-center"
               >
                 Watch Now
               </Link>
-              <Link 
-                to={`/details/tv/${hero.id}`}
-                className="bg-white/10 backdrop-blur-md text-white px-6 md:px-10 py-2.5 md:py-3 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
+              <button 
+                onClick={() => toggleWatchlist(hero)}
+                className="flex-1 md:flex-none bg-white/10 backdrop-blur-md text-white px-6 md:px-10 py-2 md:py-2.5 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all whitespace-nowrap text-center"
               >
-                Details
-              </Link>
+                {isInWatchlist(hero.id) ? 'In List' : 'Add to List'}
+              </button>
             </div>
           </div>
         </section>
