@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchUpcomingMovies, fetchUpcomingTV } from '../services/tmdbService';
 import { getUpcomingNews } from '../services/geminiService';
 import { Movie } from '../types';
@@ -112,11 +113,16 @@ const Upcoming: React.FC = () => {
 
       {/* Movies 2026 Grid */}
       <section className="mb-20 md:mb-32">
-        <div className="flex items-center gap-6 mb-10 md:mb-16">
-          <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter">
-            2026 <span className="text-amber-500">Movies</span>
-          </h2>
-          <div className="h-[1px] flex-1 bg-gradient-to-r from-amber-500/20 to-transparent"></div>
+        <div className="flex items-center justify-between mb-10 md:mb-16">
+          <div className="flex items-center gap-6 flex-1">
+            <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter">
+              2026 <span className="text-amber-500">Movies</span>
+            </h2>
+            <div className="h-[1px] flex-1 bg-gradient-to-r from-amber-500/20 to-transparent"></div>
+          </div>
+          <Link to="/category/upcoming-movies" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors ml-4">
+            Explore All
+          </Link>
         </div>
         
         {loadingMovies ? (
@@ -147,11 +153,16 @@ const Upcoming: React.FC = () => {
 
       {/* Series 2026 Grid */}
       <section>
-        <div className="flex items-center gap-6 mb-10 md:mb-16">
-          <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter text-white">
-            2026 <span className="text-amber-500">Series</span>
-          </h2>
-          <div className="h-[1px] flex-1 bg-gradient-to-r from-amber-500/20 to-transparent"></div>
+        <div className="flex items-center justify-between mb-10 md:mb-16">
+          <div className="flex items-center gap-6 flex-1">
+            <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter text-white">
+              2026 <span className="text-amber-500">Series</span>
+            </h2>
+            <div className="h-[1px] flex-1 bg-gradient-to-r from-amber-500/20 to-transparent"></div>
+          </div>
+          <Link to="/category/upcoming-tv" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors ml-4">
+            Explore All
+          </Link>
         </div>
         
         {loadingTV ? (

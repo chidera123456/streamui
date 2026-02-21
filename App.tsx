@@ -17,6 +17,7 @@ const Details = lazy(() => import('./pages/Details.tsx'));
 const Profile = lazy(() => import('./pages/Profile.tsx'));
 const Upcoming = lazy(() => import('./pages/Upcoming.tsx'));
 const AISuggest = lazy(() => import('./pages/AISuggest.tsx'));
+const Category = lazy(() => import('./pages/Category.tsx'));
 
 const App: React.FC = () => {
   return (
@@ -39,6 +40,7 @@ const App: React.FC = () => {
                   <Route path="/watchlist" element={<Watchlist />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/details/:type/:id" element={<Details />} />
+                  <Route path="/category/:id" element={<Category />} />
                 </Routes>
               </Suspense>
             </main>

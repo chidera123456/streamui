@@ -1,8 +1,9 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent, fetchAwardWinning, getFromCache } from '../services/tmdbService';
+import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent, fetchAwardWinning, fetchComedyTV, getFromCache } from '../services/tmdbService';
 import { useHistory } from '../hooks/useHistory';
+import { useWatchlist } from '../hooks/useWatchlist';
 import { Movie } from '../types';
 import { BACKDROP_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
@@ -46,7 +47,14 @@ const HorizontalSection: React.FC<{
   );
 };
 
-const MediaSection: React.FC<{ title: string; subtitle?: string; movies: Movie[]; loading: boolean; color?: string }> = ({ title, subtitle, movies, loading, color = "#1ce783" }) => {
+const MediaSection: React.FC<{ 
+  title: string; 
+  subtitle?: string; 
+  movies: Movie[]; 
+  loading: boolean; 
+  color?: string;
+  categoryId?: string;
+}> = ({ title, subtitle, movies, loading, color = "#1ce783", categoryId }) => {
   const showSkeleton = loading && movies.length === 0;
 
   if (!loading && movies.length === 0) return null;
@@ -60,7 +68,7 @@ const MediaSection: React.FC<{ title: string; subtitle?: string; movies: Movie[]
             {title.split(' ')[0]} <span style={{ color }}>{title.split(' ').slice(1).join(' ')}</span>
           </h2>
         </div>
-        <Link to="/search" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
+        <Link to={categoryId ? `/category/${categoryId}` : "/search"} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
           Explore All
         </Link>
       </div>
@@ -80,6 +88,7 @@ const MediaSection: React.FC<{ title: string; subtitle?: string; movies: Movie[]
 
 const Home: React.FC = () => {
   const { history, removeFromHistory } = useHistory();
+  const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const rotationTimerRef = useRef<number | null>(null);
   
   const [trending, setTrending] = useState<Movie[]>(() => getFromCache('trending-movie-1')?.results || []);
@@ -87,6 +96,7 @@ const Home: React.FC = () => {
   const [tvTrending, setTvTrending] = useState<Movie[]>(() => getFromCache('trending-tv-1')?.results || []);
   const [anime, setAnime] = useState<Movie[]>(() => getFromCache('anime-1-all')?.results || []);
   const [awardWinning, setAwardWinning] = useState<Movie[]>(() => getFromCache('award-winning-movie-1')?.results || []);
+  const [comedyTV, setComedyTV] = useState<Movie[]>(() => getFromCache('comedy-tv-1')?.results || []);
   
   const [heroIndex, setHeroIndex] = useState(() => Math.floor(Math.random() * 10));
   
@@ -95,6 +105,7 @@ const Home: React.FC = () => {
   const [loadingAnime, setLoadingAnime] = useState(anime.length === 0);
   const [loadingTV, setLoadingTV] = useState(tvTrending.length === 0);
   const [loadingAwards, setLoadingAwards] = useState(awardWinning.length === 0);
+  const [loadingComedy, setLoadingComedy] = useState(comedyTV.length === 0);
   const [genreMap, setGenreMap] = useState<Record<number, string>>({});
 
   const heroList = useMemo(() => {
@@ -141,6 +152,11 @@ const Home: React.FC = () => {
       if (res?.results) setAwardWinning(res.results);
       setLoadingAwards(false);
     });
+
+    fetchComedyTV(1).then(res => {
+      if (res?.results) setComedyTV(res.results);
+      setLoadingComedy(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -161,7 +177,7 @@ const Home: React.FC = () => {
       {!hero && (loadingTrending) ? (
         <HeroSkeleton />
       ) : hero && (
-        <section className="relative h-[70vh] md:h-[90vh] w-full overflow-hidden">
+        <section className="relative h-[65vh] md:h-[80vh] w-full overflow-hidden">
           <div className="absolute inset-0">
             <img 
               key={hero.id}
@@ -174,7 +190,7 @@ const Home: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent" />
           </div>
           
-          <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
+          <div className="absolute top-24 md:top-32 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
             <div className="flex items-center gap-3 animate-in fade-in duration-700">
               <span className="text-[#1ce783] text-sm md:text-lg font-black">★ {hero.vote_average.toFixed(1)}</span>
               <div className="h-[1px] w-8 bg-white/20"></div>
@@ -188,19 +204,19 @@ const Home: React.FC = () => {
             <p key={`p-${hero.id}`} className="text-gray-300 text-[10px] md:text-base max-w-xl line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
               {hero.overview}
             </p>
-            <div className="flex items-center gap-4 pt-2 animate-in slide-in-from-bottom-4 duration-1000">
+            <div className="flex items-center gap-2 pt-2 animate-in slide-in-from-bottom-4 duration-1000 w-full md:w-auto">
               <Link 
                 to={`/details/${hero.media_type || 'movie'}/${hero.id}`}
-                className="bg-[#1ce783] text-black px-8 md:px-12 py-2.5 md:py-3 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest hover:bg-white transition-all transform active:scale-95 shadow-2xl"
+                className="flex-1 md:flex-none bg-white text-black px-6 md:px-10 py-2 md:py-2.5 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest hover:bg-[#1ce783] transition-all transform active:scale-95 shadow-2xl whitespace-nowrap text-center"
               >
-                Watch
+                Watch Now
               </Link>
-              <Link 
-                to={`/details/${hero.media_type || 'movie'}/${hero.id}`}
-                className="bg-white/10 backdrop-blur-md text-white px-6 md:px-10 py-2.5 md:py-3 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
+              <button 
+                onClick={() => toggleWatchlist(hero)}
+                className="flex-1 md:flex-none bg-white/10 backdrop-blur-md text-white px-6 md:px-10 py-2 md:py-2.5 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all whitespace-nowrap text-center"
               >
-                Details
-              </Link>
+                {isInWatchlist(hero.id) ? 'In List' : 'Add to List'}
+              </button>
             </div>
           </div>
         </section>
@@ -221,6 +237,7 @@ const Home: React.FC = () => {
           subtitle="Cinematic Pulse" 
           movies={trending} 
           loading={loadingTrending} 
+          categoryId="trending"
         />
 
         <MediaSection 
@@ -229,6 +246,7 @@ const Home: React.FC = () => {
           movies={awardWinning} 
           loading={loadingAwards} 
           color="#fbbf24"
+          categoryId="awards"
         />
 
         <MediaSection 
@@ -237,6 +255,7 @@ const Home: React.FC = () => {
           movies={netflix} 
           loading={loadingNetflix} 
           color="#e50914"
+          categoryId="netflix"
         />
 
         <MediaSection 
@@ -245,6 +264,7 @@ const Home: React.FC = () => {
           movies={anime} 
           loading={loadingAnime} 
           color="#22d3ee"
+          categoryId="anime"
         />
 
         <MediaSection 
@@ -252,6 +272,16 @@ const Home: React.FC = () => {
           subtitle="Must Watch" 
           movies={tvTrending} 
           loading={loadingTV} 
+          categoryId="tv"
+        />
+
+        <MediaSection 
+          title="Comedy Series" 
+          subtitle="Laughter Guaranteed" 
+          movies={comedyTV} 
+          loading={loadingComedy} 
+          color="#f472b6"
+          categoryId="comedy-tv"
         />
       </div>
     </div>

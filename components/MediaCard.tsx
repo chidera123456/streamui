@@ -1,5 +1,5 @@
 
-import React, { useState, memo } from 'react';
+import React, { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Movie } from '../types';
 import { useWatchlist } from '../hooks/useWatchlist';
@@ -13,7 +13,6 @@ interface Props {
 
 const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
-  const [isHovered, setIsHovered] = useState(false);
   
   const title = media.title || media.name;
   const year = (media.release_date || media.first_air_date || '').substring(0, 4);
@@ -32,8 +31,6 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) 
   return (
     <div 
       className="group relative bg-[#0a0a0a] rounded-sm overflow-hidden border border-white/5 transition-all duration-500 hover:scale-105 hover:z-20 hover:shadow-[0_20px_40px_rgba(0,0,0,0.6)] w-full"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <Link to={`/details/${media.media_type}/${media.id}`}>
         <div className="aspect-[2/3] relative">
