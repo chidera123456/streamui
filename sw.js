@@ -1,11 +1,13 @@
 
-// ZenStream Service Worker v3.7 - High Performance Update
-const CACHE_NAME = 'zenstream-v12';
-const IMAGE_CACHE_NAME = 'zenstream-images-v2';
+// ZenStream Service Worker v3.8 - PWA Install Fix
+const CACHE_NAME = 'zenstream-v13';
+const IMAGE_CACHE_NAME = 'zenstream-images-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/index.css',
+  '/index.tsx'
 ];
 
 // Install: Cache app shell
@@ -78,10 +80,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Navigation: Network First, Fallback to SPA shell
-  if (event.request.mode === 'navigate') {
+  if (event.request.mode === 'navigate' || event.request.url.includes('manifest.json')) {
     event.respondWith(
       fetch(event.request).catch(() => {
-        return caches.match('/index.html') || caches.match('/');
+        return caches.match(event.request) || caches.match('/index.html') || caches.match('/');
       })
     );
     return;

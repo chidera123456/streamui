@@ -12,8 +12,25 @@ window.onerror = function(message, source, lineno, colno, error) {
 // PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('ZenStream: SW Registered', reg.scope))
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => {
+        console.log('ZenStream: SW Registered', reg.scope);
+        // Check for updates
+        reg.onupdatefound = () => {
+          const installingWorker = reg.installing;
+          if (installingWorker) {
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === 'installed') {
+                if (navigator.serviceWorker.controller) {
+                  console.log('ZenStream: New content available; please refresh.');
+                } else {
+                  console.log('ZenStream: Content cached for offline use.');
+                }
+              }
+            };
+          }
+        };
+      })
       .catch(err => console.log('ZenStream: SW Failed', err));
   });
 }

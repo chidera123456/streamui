@@ -1,12 +1,33 @@
 
 {
+  "id": "zenstream-pwa",
   "name": "ZenStream - Cinematic Discovery",
   "short_name": "ZenStream",
   "description": "Explore millions of movies and series with ZenStream. Pure cinematic discovery.",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#040404",
   "theme_color": "#1ce783",
+  "categories": ["entertainment", "movies", "video"],
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "https://picsum.photos/seed/zen1/1280/720",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "ZenStream Home"
+    },
+    {
+      "src": "https://picsum.photos/seed/zen2/720/1280",
+      "sizes": "720x1280",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "ZenStream Mobile"
+    }
+  ],
   "icons": [
     {
       "src": "https://img.icons8.com/fluency/192/000000/movie-projector.png",
@@ -15,10 +36,22 @@
       "purpose": "any"
     },
     {
+      "src": "https://img.icons8.com/fluency/192/000000/movie-projector.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "https://img.icons8.com/fluency/512/000000/movie-projector.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "https://img.icons8.com/fluency/512/000000/movie-projector.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
