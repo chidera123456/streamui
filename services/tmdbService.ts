@@ -1,6 +1,6 @@
 
 import { TMDB_API_KEY, TMDB_BASE_URL } from '../constants.ts';
-import { Movie, Episode } from '../types.ts';
+import { Movie, Episode, Collection } from '../types.ts';
 
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 1000 * 60 * 30; // 30 minutes
@@ -238,6 +238,21 @@ export const fetchComedyTV = async (page: number = 1): Promise<{ results: Movie[
   }
 };
 
+export const fetchTopRatedTV = async (page: number = 1): Promise<{ results: Movie[], totalPages: number }> => {
+  const cacheKey = `top-rated-tv-${page}`;
+  try {
+    const response = await secureFetch(`${TMDB_BASE_URL}/tv/top_rated?api_key=${TMDB_API_KEY}&page=${page}`);
+    const data = await handleResponse(response, cacheKey);
+    return {
+      results: (data.results || []).map((m: any) => ({ ...m, media_type: 'tv' })),
+      totalPages: data.total_pages || 1
+    };
+  } catch (err) {
+    const oldCache = cache.get(cacheKey);
+    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+  }
+};
+
 export const getDetails = async (id: number, type: 'movie' | 'tv'): Promise<Movie> => {
   const cacheKey = `details-${type}-${id}`;
   const cached = getFromCache(cacheKey);
@@ -273,6 +288,20 @@ export const getSeasonEpisodes = async (id: number, season: number): Promise<Epi
     return data.episodes || [];
   } catch (err) {
     return [];
+  }
+};
+
+export const fetchCollection = async (id: number): Promise<Collection | null> => {
+  const cacheKey = `collection-${id}`;
+  const cached = getFromCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const response = await secureFetch(`${TMDB_BASE_URL}/collection/${id}?api_key=${TMDB_API_KEY}`);
+    const data = await handleResponse(response, cacheKey);
+    return data;
+  } catch (err) {
+    return null;
   }
 };
 

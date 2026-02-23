@@ -1,11 +1,12 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent, fetchAwardWinning, fetchComedyTV, getFromCache } from '../services/tmdbService';
+import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent, fetchAwardWinning, fetchComedyTV, fetchTopRatedTV, getFromCache } from '../services/tmdbService';
 import { useHistory } from '../hooks/useHistory';
 import { Movie } from '../types';
 import { BACKDROP_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
+import FeaturedCollections from '../components/FeaturedCollections';
 import { HeroSkeleton, GridSkeleton } from '../components/Skeleton';
 
 const HorizontalSection: React.FC<{ 
@@ -95,6 +96,7 @@ const Home: React.FC = () => {
   const [anime, setAnime] = useState<Movie[]>(() => getFromCache('anime-1-all')?.results || []);
   const [awardWinning, setAwardWinning] = useState<Movie[]>(() => getFromCache('award-winning-movie-1')?.results || []);
   const [comedyTV, setComedyTV] = useState<Movie[]>(() => getFromCache('comedy-tv-1')?.results || []);
+  const [topRatedTV, setTopRatedTV] = useState<Movie[]>(() => getFromCache('top-rated-tv-1')?.results || []);
   
   const [heroIndex, setHeroIndex] = useState(() => Math.floor(Math.random() * 10));
   
@@ -104,6 +106,7 @@ const Home: React.FC = () => {
   const [loadingTV, setLoadingTV] = useState(tvTrending.length === 0);
   const [loadingAwards, setLoadingAwards] = useState(awardWinning.length === 0);
   const [loadingComedy, setLoadingComedy] = useState(comedyTV.length === 0);
+  const [loadingTopRatedTV, setLoadingTopRatedTV] = useState(topRatedTV.length === 0);
   const [genreMap, setGenreMap] = useState<Record<number, string>>({});
 
   const heroList = useMemo(() => {
@@ -154,6 +157,11 @@ const Home: React.FC = () => {
     fetchComedyTV(1).then(res => {
       if (res?.results) setComedyTV(res.results);
       setLoadingComedy(false);
+    });
+
+    fetchTopRatedTV(1).then(res => {
+      if (res?.results) setTopRatedTV(res.results);
+      setLoadingTopRatedTV(false);
     });
   }, []);
 
@@ -238,6 +246,8 @@ const Home: React.FC = () => {
           categoryId="trending"
         />
 
+        <FeaturedCollections />
+
         <MediaSection 
           title="Award Winning" 
           subtitle="Critically Acclaimed" 
@@ -280,6 +290,15 @@ const Home: React.FC = () => {
           loading={loadingComedy} 
           color="#f472b6"
           categoryId="comedy-tv"
+        />
+
+        <MediaSection 
+          title="Top Rated TV Shows" 
+          subtitle="All Time Greats" 
+          movies={topRatedTV} 
+          loading={loadingTopRatedTV} 
+          color="#1ce783"
+          categoryId="top-rated-tv"
         />
       </div>
     </div>

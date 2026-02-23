@@ -82,6 +82,15 @@ export interface AISuggestion {
   reason: string;
 }
 
+export interface Collection {
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string;
+  backdrop_path: string;
+  parts?: Movie[];
+}
+
 export interface Comment {
   id: string;
   user_id: string;

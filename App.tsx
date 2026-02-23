@@ -18,6 +18,8 @@ const Profile = lazy(() => import('./pages/Profile.tsx'));
 const Upcoming = lazy(() => import('./pages/Upcoming.tsx'));
 const AISuggest = lazy(() => import('./pages/AISuggest.tsx'));
 const Category = lazy(() => import('./pages/Category.tsx'));
+const Collections = lazy(() => import('./pages/Collections.tsx'));
+const CollectionDetails = lazy(() => import('./pages/CollectionDetails.tsx'));
 
 const App: React.FC = () => {
   return (
@@ -41,6 +43,8 @@ const App: React.FC = () => {
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/details/:type/:id" element={<Details />} />
                   <Route path="/category/:id" element={<Category />} />
+                  <Route path="/collections" element={<Collections />} />
+                  <Route path="/collection/:id" element={<CollectionDetails />} />
                 </Routes>
               </Suspense>
             </main>
