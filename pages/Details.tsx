@@ -230,7 +230,7 @@ const Details: React.FC = () => {
     : '';
 
   return (
-    <div className="min-h-screen pt-16 md:pt-20 pb-20 bg-[#040404]">
+    <div className="min-h-screen pt-0 md:pt-20 pb-20 bg-[#040404]">
       <div className="relative h-[60vh] md:h-[90vh] w-full bg-black overflow-hidden shadow-2xl">
         {loading || !media ? (
           <div className="absolute inset-0 bg-[#0a0a0a] animate-pulse" />
