@@ -8,7 +8,6 @@ import ProfileModal from './components/ProfileModal.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
 import { DataProvider } from './context/DataContext.tsx';
 import { HeroSkeleton } from './components/Skeleton.tsx';
-import PWAInstallPrompt from './components/PWAInstallPrompt.tsx';
 
 const Home = lazy(() => import('./pages/Home.tsx'));
 const Search = lazy(() => import('./pages/Search.tsx'));
@@ -51,7 +50,6 @@ const App: React.FC = () => {
             </main>
             
             <MobileNav />
-            <PWAInstallPrompt />
             
             <footer className="py-16 px-6 md:px-12 border-t border-white/5 bg-black/50 text-center text-gray-600 text-[10px] md:text-xs mb-16 md:mb-0">
               <div className="max-w-7xl mx-auto space-y-4">
