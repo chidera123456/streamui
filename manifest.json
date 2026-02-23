@@ -1,10 +1,10 @@
 
 {
-  "id": "zenstream-pwa",
+  "id": "zenstream-app-v1",
   "name": "ZenStream - Cinematic Discovery",
   "short_name": "ZenStream",
   "description": "Explore millions of movies and series with ZenStream. Pure cinematic discovery.",
-  "start_url": "/?source=pwa",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

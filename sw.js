@@ -1,13 +1,12 @@
 
-// ZenStream Service Worker v3.8 - PWA Install Fix
-const CACHE_NAME = 'zenstream-v13';
-const IMAGE_CACHE_NAME = 'zenstream-images-v3';
+// ZenStream Service Worker v4.0 - Critical Install Fix
+const CACHE_NAME = 'zenstream-v15';
+const IMAGE_CACHE_NAME = 'zenstream-images-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/index.css',
-  '/index.tsx'
+  '/index.css'
 ];
 
 // Install: Cache app shell

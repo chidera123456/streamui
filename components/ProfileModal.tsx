@@ -24,10 +24,10 @@ const ProfileModal: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (user && !newUsername) {
       setNewUsername(user.user_metadata?.username || user.email?.split('@')[0] || '');
     }
-  }, [user]);
+  }, [user, newUsername]);
 
   if (!isProfileModalOpen || !user) return null;
 
@@ -58,10 +58,15 @@ const ProfileModal: React.FC = () => {
 
   const handleInstall = async () => {
     if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        if (outcome === 'accepted') {
+          setDeferredPrompt(null);
+        }
+      } catch (err) {
+        console.error('Installation failed:', err);
       }
     }
   };
