@@ -314,11 +314,13 @@ const Details: React.FC = () => {
               <h1 className="text-3xl md:text-8xl font-black uppercase italic tracking-tighter mb-6 md:mb-8 leading-none drop-shadow-2xl animate-in slide-in-from-left-6 duration-700 line-clamp-2">
                 {media.title || media.name}
               </h1>
-              <div className="flex flex-wrap gap-3 md:gap-4 animate-in slide-in-from-bottom-4 duration-1000">
-                <button onClick={() => playMedia()} className="flex-1 md:flex-none bg-white text-black px-8 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-[#1ce783] transition-all transform active:scale-95 flex items-center justify-center gap-2 md:gap-3 uppercase tracking-widest shadow-2xl">
+              <div className="flex flex-nowrap gap-2 md:gap-4 animate-in slide-in-from-bottom-4 duration-1000">
+                <button onClick={() => playMedia()} className="flex-1 md:flex-none bg-white text-black px-4 md:px-10 py-3 md:py-4 rounded-sm font-black text-[10px] md:text-lg hover:bg-[#1ce783] transition-all transform active:scale-95 flex items-center justify-center gap-2 md:gap-3 uppercase tracking-widest shadow-2xl whitespace-nowrap">
                   {lastWatched ? 'Continue' : 'Watch Now'}
                 </button>
-                <button onClick={() => toggleWatchlist(media)} className="flex-1 md:flex-none bg-white/10 backdrop-blur-xl text-white border border-white/20 px-8 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-lg hover:bg-white/20 transition-all flex items-center justify-center gap-2 md:gap-3 uppercase tracking-widest">{inList ? 'Saved' : 'Add To List'}</button>
+                <button onClick={() => toggleWatchlist(media)} className="flex-1 md:flex-none bg-white/10 backdrop-blur-xl text-white border border-white/20 px-4 md:px-10 py-3 md:py-4 rounded-sm font-black text-[10px] md:text-lg hover:bg-white/20 transition-all flex items-center justify-center gap-2 md:gap-3 uppercase tracking-widest whitespace-nowrap">
+                  {inList ? 'Saved' : 'Add To List'}
+                </button>
               </div>
             </div>
 
