@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="scroll-behavior: smooth;">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -21,6 +21,12 @@
     window.process = window.process || { env: { NODE_ENV: 'production' } };
   </script>
   <style>
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
     body {
       font-family: 'Inter', sans-serif;
       background-color: #040404;
@@ -28,6 +34,13 @@
       margin: 0;
       -webkit-tap-highlight-color: transparent;
       overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    /* Performance optimization for smooth scrolling */
+    section {
+      content-visibility: auto;
+      contain-intrinsic-size: 1px 500px;
     }
     
     .hide-scrollbar::-webkit-scrollbar {
