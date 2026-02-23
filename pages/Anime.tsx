@@ -124,8 +124,8 @@ const Anime: React.FC = () => {
           <div className="flex items-end justify-between border-b border-white/5 pb-4">
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1ce783]">Combat & Power</p>
-              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">
-                Action <span className="text-white/40">Anime</span>
+              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-[#1ce783]">
+                Action Anime
               </h2>
             </div>
             <Link to="/category/anime-action" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
@@ -144,9 +144,9 @@ const Anime: React.FC = () => {
         <section className="space-y-6">
           <div className="flex items-end justify-between border-b border-white/5 pb-4">
             <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400">Other Worlds</p>
-              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">
-                Fantasy <span className="text-white/40">& Sci-Fi</span>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1ce783]">Other Worlds</p>
+              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-[#1ce783]">
+                Fantasy & Sci-Fi
               </h2>
             </div>
             <Link to="/category/anime-fantasy" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
@@ -166,8 +166,8 @@ const Anime: React.FC = () => {
           <div className="flex items-end justify-between border-b border-white/5 pb-4">
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1ce783]">Global Pulse</p>
-              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">
-                Trending <span className="text-white/40">Japan</span>
+              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-[#1ce783]">
+                Trending Japan
               </h2>
             </div>
             <Link to="/category/anime" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">

@@ -23,8 +23,8 @@ const HorizontalSection: React.FC<{
       <div className="flex items-end justify-between px-6 md:px-16 border-b border-white/5 pb-4">
         <div className="space-y-1">
           {subtitle && <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color }}>{subtitle}</p>}
-          <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">
-            {title.split(' ')[0]} <span style={{ color }}>{title.split(' ').slice(1).join(' ')}</span>
+          <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter" style={{ color }}>
+            {title}
           </h2>
         </div>
       </div>
@@ -64,8 +64,8 @@ const MediaSection: React.FC<{
       <div className="flex items-end justify-between border-b border-white/5 pb-4">
         <div className="space-y-1">
           {subtitle && <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color }}>{subtitle}</p>}
-          <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">
-            {title.split(' ')[0]} <span style={{ color }}>{title.split(' ').slice(1).join(' ')}</span>
+          <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter" style={{ color }}>
+            {title}
           </h2>
         </div>
         <Link to={categoryId ? `/category/${categoryId}` : "/search"} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
@@ -233,7 +233,7 @@ const Home: React.FC = () => {
           <HorizontalSection 
             title="Continue Watching" 
             movies={history.map(h => h.media_data)} 
-            color="#06b6d4" 
+            color="#1ce783" 
             onRemoveItem={(id) => removeFromHistory(id)}
           />
         )}
@@ -244,6 +244,7 @@ const Home: React.FC = () => {
           movies={trending} 
           loading={loadingTrending} 
           categoryId="trending"
+          color="#1ce783"
         />
 
         <FeaturedCollections />
@@ -253,7 +254,7 @@ const Home: React.FC = () => {
           subtitle="Critically Acclaimed" 
           movies={awardWinning} 
           loading={loadingAwards} 
-          color="#fbbf24"
+          color="#1ce783"
           categoryId="awards"
         />
 
@@ -262,7 +263,7 @@ const Home: React.FC = () => {
           subtitle="Global Premiere" 
           movies={netflix} 
           loading={loadingNetflix} 
-          color="#e50914"
+          color="#1ce783"
           categoryId="netflix"
         />
 
@@ -271,7 +272,7 @@ const Home: React.FC = () => {
           subtitle="Rising Sun" 
           movies={anime} 
           loading={loadingAnime} 
-          color="#22d3ee"
+          color="#1ce783"
           categoryId="anime"
         />
 
@@ -281,6 +282,7 @@ const Home: React.FC = () => {
           movies={tvTrending} 
           loading={loadingTV} 
           categoryId="tv"
+          color="#1ce783"
         />
 
         <MediaSection 
@@ -288,7 +290,7 @@ const Home: React.FC = () => {
           subtitle="Laughter Guaranteed" 
           movies={comedyTV} 
           loading={loadingComedy} 
-          color="#f472b6"
+          color="#1ce783"
           categoryId="comedy-tv"
         />
 

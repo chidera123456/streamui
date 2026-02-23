@@ -115,8 +115,8 @@ const Upcoming: React.FC = () => {
       <section className="mb-20 md:mb-32">
         <div className="flex items-center justify-between mb-10 md:mb-16">
           <div className="flex items-center gap-6 flex-1">
-            <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter">
-              2026 <span className="text-amber-500">Movies</span>
+            <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter text-[#1ce783]">
+              2026 Movies
             </h2>
             <div className="h-[1px] flex-1 bg-gradient-to-r from-amber-500/20 to-transparent"></div>
           </div>
@@ -155,8 +155,8 @@ const Upcoming: React.FC = () => {
       <section>
         <div className="flex items-center justify-between mb-10 md:mb-16">
           <div className="flex items-center gap-6 flex-1">
-            <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter text-white">
-              2026 <span className="text-amber-500">Series</span>
+            <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter text-[#1ce783]">
+              2026 Series
             </h2>
             <div className="h-[1px] flex-1 bg-gradient-to-r from-amber-500/20 to-transparent"></div>
           </div>

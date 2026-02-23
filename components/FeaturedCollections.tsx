@@ -50,8 +50,8 @@ const FeaturedCollections: React.FC = () => {
   return (
     <section className="px-6 md:px-16 space-y-8">
       <div className="flex items-center gap-3 border-l-4 border-[#1ce783] pl-4">
-        <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter">
-          Featured <span className="text-[#1ce783]">Collections</span>
+        <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-[#1ce783]">
+          Featured Collections
         </h2>
       </div>
 
