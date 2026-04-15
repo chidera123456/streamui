@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent, fetchAwardWinning, fetchComedyTV, fetchTopRatedTV, getFromCache } from '../services/tmdbService';
+import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent, fetchAwardWinning, fetchComedyTV, fetchTopRatedTV, getFromCache, fetchLogos } from '../services/tmdbService';
 import { useHistory } from '../hooks/useHistory';
 import { Movie } from '../types';
-import { BACKDROP_URL } from '../constants';
+import { BACKDROP_URL, LOGO_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
 import FeaturedCollections from '../components/FeaturedCollections';
 import { HeroSkeleton, GridSkeleton } from '../components/Skeleton';
@@ -99,6 +99,7 @@ const Home: React.FC = () => {
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>(() => getFromCache('top-rated-tv-1')?.results || []);
   
   const [heroIndex, setHeroIndex] = useState(() => Math.floor(Math.random() * 10));
+  const [heroLogo, setHeroLogo] = useState<string | null>(null);
   
   const [loadingTrending, setLoadingTrending] = useState(trending.length === 0);
   const [loadingNetflix, setLoadingNetflix] = useState(netflix.length === 0);
@@ -166,6 +167,12 @@ const Home: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (hero) {
+      fetchLogos(hero.id, hero.media_type || 'movie').then(setHeroLogo);
+    }
+  }, [hero]);
+
+  useEffect(() => {
     if (heroList.length > 0) {
       if (rotationTimerRef.current) clearInterval(rotationTimerRef.current);
       
@@ -192,8 +199,8 @@ const Home: React.FC = () => {
               alt={hero.title || hero.name}
               loading="eager"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-[#040404]/40 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#121212] via-transparent to-transparent" />
           </div>
           
           <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
@@ -204,9 +211,17 @@ const Home: React.FC = () => {
                 {hero.genre_ids?.slice(0, 2).map(id => genreMap[id]).join(' • ')}
               </span>
             </div>
-            <h1 key={`h1-${hero.id}`} className="text-3xl md:text-7xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700">
-              {hero.title || hero.name}
-            </h1>
+            {heroLogo ? (
+              <img 
+                src={`${LOGO_URL}${heroLogo}`} 
+                alt={hero.title || hero.name}
+                className="h-16 md:h-32 lg:h-48 w-auto object-contain animate-in slide-in-from-left-6 duration-700 drop-shadow-2xl"
+              />
+            ) : (
+              <h1 key={`h1-${hero.id}`} className="text-3xl md:text-7xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700">
+                {hero.title || hero.name}
+              </h1>
+            )}
             <p key={`p-${hero.id}`} className="text-gray-300 text-[10px] md:text-base max-w-xl line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
               {hero.overview}
             </p>

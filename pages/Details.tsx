@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getDetails, getSeasonEpisodes, fetchSimilar } from '../services/tmdbService';
+import { getDetails, getSeasonEpisodes, fetchSimilar, fetchLogos } from '../services/tmdbService';
 import { Movie, Episode } from '../types';
-import { BACKDROP_URL, IMG_URL, PLAYER_URL, TV_PLAYER_URL } from '../constants';
+import { BACKDROP_URL, IMG_URL, PLAYER_URL, TV_PLAYER_URL, LOGO_URL } from '../constants';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { useHistory } from '../hooks/useHistory';
 import MediaCard from '../components/MediaCard';
@@ -29,6 +29,7 @@ const Details: React.FC = () => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
 
   const [media, setMedia] = useState<Movie | null>(null);
+  const [mediaLogo, setMediaLogo] = useState<string | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [currentSeason, setCurrentSeason] = useState(1);
   const [currentEpisode, setCurrentEpisode] = useState(1);
@@ -78,6 +79,8 @@ const Details: React.FC = () => {
       try {
         const data = await getDetails(Number(id), type as 'movie' | 'tv');
         setMedia(data);
+        
+        fetchLogos(Number(id), type as 'movie' | 'tv').then(setMediaLogo);
         
         const initialSeason = lastWatched?.season || 1;
         const initialEpisode = lastWatched?.episode || 1;
@@ -230,10 +233,10 @@ const Details: React.FC = () => {
     : '';
 
   return (
-    <div className="min-h-screen pt-0 md:pt-20 pb-20 bg-[#040404]">
-      <div className="relative h-[60vh] md:h-[90vh] w-full bg-black overflow-hidden shadow-2xl">
+    <div className="min-h-screen pt-0 md:pt-20 pb-20 bg-[#121212]">
+      <div className="relative h-[60vh] md:h-[90vh] w-full bg-[#121212] overflow-hidden shadow-2xl">
         {loading || !media ? (
-          <div className="absolute inset-0 bg-[#0a0a0a] animate-pulse" />
+          <div className="absolute inset-0 bg-[#181818] animate-pulse" />
         ) : isPlaying ? (
           <div className="w-full h-full group/player relative animate-in fade-in duration-500">
             <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity duration-300">
@@ -299,8 +302,8 @@ const Details: React.FC = () => {
                 />
               </div>
             )}
-            <div className={`absolute inset-0 bg-gradient-to-t from-[#040404] via-transparent to-[#040404]/40 z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
-            <div className={`absolute inset-0 bg-gradient-to-r from-[#040404] via-[#040404]/40 to-transparent z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
+            <div className={`absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-[#121212]/40 z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
+            <div className={`absolute inset-0 bg-gradient-to-r from-[#121212] via-[#121212]/40 to-transparent z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
             
             <div className="absolute bottom-0 left-0 p-6 md:p-16 w-full max-w-5xl z-20">
               <div className="flex items-center gap-3 md:gap-4 mb-4 animate-in slide-in-from-left-4 duration-700">
@@ -311,9 +314,17 @@ const Details: React.FC = () => {
                   <span className="ml-2 px-3 py-1 bg-[#1ce783] text-black text-[9px] font-black uppercase rounded-full animate-pulse">Resuming S{currentSeason}:E{currentEpisode}</span>
                 )}
               </div>
-              <h1 className="text-3xl md:text-8xl font-black uppercase italic tracking-tighter mb-6 md:mb-8 leading-none drop-shadow-2xl animate-in slide-in-from-left-6 duration-700 line-clamp-2">
-                {media.title || media.name}
-              </h1>
+              {mediaLogo ? (
+                <img 
+                  src={`${LOGO_URL}${mediaLogo}`} 
+                  alt={media.title || media.name}
+                  className="h-16 md:h-32 lg:h-48 w-auto object-contain animate-in slide-in-from-left-6 duration-700 drop-shadow-2xl mb-6 md:mb-8"
+                />
+              ) : (
+                <h1 className="text-3xl md:text-8xl font-black uppercase italic tracking-tighter mb-6 md:mb-8 leading-none drop-shadow-2xl animate-in slide-in-from-left-6 duration-700 line-clamp-2">
+                  {media.title || media.name}
+                </h1>
+              )}
               <div className="flex flex-nowrap gap-2 md:gap-4 animate-in slide-in-from-bottom-4 duration-1000">
                 <button onClick={() => playMedia()} className="flex-1 md:flex-none bg-white text-black px-4 md:px-10 py-3 md:py-4 rounded-sm font-black text-[10px] md:text-lg hover:bg-[#1ce783] transition-all transform active:scale-95 flex items-center justify-center gap-2 md:gap-3 uppercase tracking-widest shadow-2xl whitespace-nowrap">
                   {lastWatched ? 'Continue' : 'Watch Now'}

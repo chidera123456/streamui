@@ -30,7 +30,7 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) 
 
   return (
     <div 
-      className="group relative bg-[#0a0a0a] rounded-sm overflow-hidden border border-white/5 transition-all duration-500 hover:scale-105 hover:z-20 hover:shadow-[0_20px_40px_rgba(0,0,0,0.6)] w-full"
+      className="group relative bg-[#1c1c1c] rounded-sm overflow-hidden border border-white/5 transition-all duration-500 hover:scale-105 hover:z-20 hover:shadow-[0_20px_40px_rgba(0,0,0,0.6)] w-full"
     >
       <Link to={`/details/${media.media_type}/${media.id}`}>
         <div className="aspect-[2/3] relative">

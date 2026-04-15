@@ -55,7 +55,7 @@ const MobileNav: React.FC = () => {
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#040404]/95 backdrop-blur-2xl border-t border-white/5 z-50 flex items-center justify-around px-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#121212]/95 backdrop-blur-2xl border-t border-white/5 z-50 flex items-center justify-around px-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
       {links.map((link) => (
         <React.Fragment key={link.path}>
           <Link 
@@ -89,7 +89,7 @@ const MobileNav: React.FC = () => {
         onClick={user ? openProfileModal : openAuthModal}
         className="flex flex-col items-center justify-center gap-1 transition-all duration-150 transform-gpu w-16 active:scale-90 text-gray-500"
       >
-        <div className={`p-0.5 rounded-full transition-all ${user ? 'ring-2 ring-[#1ce783]/20 ring-offset-2 ring-offset-[#040404]' : ''}`}>
+        <div className={`p-0.5 rounded-full transition-all ${user ? 'ring-2 ring-[#1ce783]/20 ring-offset-2 ring-offset-[#121212]' : ''}`}>
           {user ? (
             <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-[10px] font-black uppercase text-black shadow-lg overflow-hidden">
               {initial}

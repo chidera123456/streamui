@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchAnime, getFromCache } from '../services/tmdbService';
+import { fetchAnime, getFromCache, fetchLogos } from '../services/tmdbService';
 import { Movie } from '../types';
-import { BACKDROP_URL } from '../constants';
+import { BACKDROP_URL, LOGO_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
 import { GridSkeleton, HeroSkeleton } from '../components/Skeleton';
 
@@ -16,6 +16,7 @@ const Anime: React.FC = () => {
   
   // Initialize with a random index to satisfy "change after reloading app"
   const [heroIndex, setHeroIndex] = useState(() => Math.floor(Math.random() * 10));
+  const [heroLogo, setHeroLogo] = useState<string | null>(null);
 
   const [loadingTrending, setLoadingTrending] = useState(trending.length === 0);
   const [loadingAction, setLoadingAction] = useState(action.length === 0);
@@ -56,6 +57,12 @@ const Anime: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (hero) {
+      fetchLogos(hero.id, 'tv').then(setHeroLogo);
+    }
+  }, [hero]);
+
+  useEffect(() => {
     if (heroList.length > 0) {
       if (rotationTimerRef.current) clearInterval(rotationTimerRef.current);
       
@@ -83,8 +90,8 @@ const Anime: React.FC = () => {
               alt={hero.name}
               loading="eager"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-[#040404]/40 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#121212] via-transparent to-transparent" />
           </div>
           
           <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
@@ -95,9 +102,17 @@ const Anime: React.FC = () => {
                 Action • Fantasy • Anime
               </span>
             </div>
-            <h1 key={`h1-${hero.id}`} className="text-3xl md:text-7xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700">
-              {hero.name}
-            </h1>
+            {heroLogo ? (
+              <img 
+                src={`${LOGO_URL}${heroLogo}`} 
+                alt={hero.name}
+                className="h-16 md:h-32 lg:h-48 w-auto object-contain animate-in slide-in-from-left-6 duration-700 drop-shadow-2xl"
+              />
+            ) : (
+              <h1 key={`h1-${hero.id}`} className="text-3xl md:text-7xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700">
+                {hero.name}
+              </h1>
+            )}
             <p key={`p-${hero.id}`} className="text-gray-300 text-[10px] md:text-base max-w-xl line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
               {hero.overview}
             </p>

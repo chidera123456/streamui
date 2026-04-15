@@ -23,7 +23,7 @@ export const CardSkeleton: React.FC = () => (
 );
 
 export const HeroSkeleton: React.FC = () => (
-  <div className="relative h-[50vh] md:h-[85vh] w-full bg-[#0a0a0a] overflow-hidden">
+  <div className="relative h-[50vh] md:h-[85vh] w-full bg-[#181818] overflow-hidden">
     <div className="absolute bottom-0 left-0 p-4 md:p-16 w-full space-y-4">
       <Skeleton className="h-4 w-32 rounded-sm" />
       <Skeleton className="h-12 md:h-24 w-3/4 md:w-1/2 rounded-sm" />

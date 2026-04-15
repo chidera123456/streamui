@@ -50,7 +50,7 @@ const Collections: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen pt-24 pb-20 bg-[#040404] px-6 md:px-16">
+    <div className="min-h-screen pt-24 pb-20 bg-[#121212] px-6 md:px-16">
       <div className="max-w-7xl mx-auto space-y-12">
         <div className="space-y-2">
           <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter">

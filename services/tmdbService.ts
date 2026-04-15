@@ -277,6 +277,26 @@ export const fetchSimilar = async (id: number, type: 'movie' | 'tv'): Promise<Mo
   }
 };
 
+export const fetchLogos = async (id: number, type: 'movie' | 'tv'): Promise<string | null> => {
+  const cacheKey = `logos-${type}-${id}`;
+  const cached = getFromCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const response = await secureFetch(`${TMDB_BASE_URL}/${type}/${id}/images?api_key=${TMDB_API_KEY}&include_image_language=en,null`);
+    const data = await handleResponse(response, cacheKey);
+    if (data.logos && data.logos.length > 0) {
+      // Prefer English logos, then any
+      const englishLogo = data.logos.find((l: any) => l.iso_639_1 === 'en');
+      const logo = englishLogo || data.logos[0];
+      return logo.file_path;
+    }
+    return null;
+  } catch (err) {
+    return null;
+  }
+};
+
 export const getSeasonEpisodes = async (id: number, season: number): Promise<Episode[]> => {
   const cacheKey = `episodes-${id}-${season}`;
   const cached = getFromCache(cacheKey);

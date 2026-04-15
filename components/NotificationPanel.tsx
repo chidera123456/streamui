@@ -21,7 +21,7 @@ const NotificationPanel: React.FC<Props> = ({ onClose }) => {
   };
 
   return (
-    <div className="absolute top-full right-0 mt-4 w-[320px] md:w-[400px] bg-[#0c0c0c]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[110] animate-in fade-in slide-in-from-top-2 duration-200">
+    <div className="absolute top-full right-0 mt-4 w-[320px] md:w-[400px] bg-[#1c1c1c]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[110] animate-in fade-in slide-in-from-top-2 duration-200">
       <div className="p-4 border-b border-white/5 flex items-center justify-between">
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1ce783]">Recent Feed</h3>
         <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Global Broadcasts</span>

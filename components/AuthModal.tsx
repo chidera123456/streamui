@@ -48,7 +48,7 @@ const AuthModal: React.FC = () => {
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300 cursor-pointer"
       onClick={handleBackdropClick}
     >
-      <div className="relative w-full max-w-md bg-[#141414] border border-white/10 rounded-3xl p-8 shadow-2xl overflow-hidden cursor-default">
+      <div className="relative w-full max-w-md bg-[#1c1c1c] border border-white/10 rounded-3xl p-8 shadow-2xl overflow-hidden cursor-default">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#1ce783] to-[#00ed82]"></div>
         
         <button 

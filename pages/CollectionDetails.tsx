@@ -32,7 +32,7 @@ const CollectionDetails: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-24 pb-20 bg-[#040404] px-6 md:px-16 animate-pulse">
+      <div className="min-h-screen pt-24 pb-20 bg-[#121212] px-6 md:px-16 animate-pulse">
         <div className="h-64 w-full bg-white/5 rounded-3xl mb-12" />
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-5">
           {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
@@ -46,7 +46,7 @@ const CollectionDetails: React.FC = () => {
   if (!collection) return null;
 
   return (
-    <div className="min-h-screen pb-20 bg-[#040404]">
+    <div className="min-h-screen pb-20 bg-[#121212]">
       <section className="relative h-[50vh] md:h-[70vh] w-full overflow-hidden">
         <div className="absolute inset-0">
           <img 
@@ -54,8 +54,8 @@ const CollectionDetails: React.FC = () => {
             className="w-full h-full object-cover"
             alt={collection.name}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-[#040404]/40 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#040404] via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#121212] via-transparent to-transparent" />
         </div>
         
         <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 z-20">

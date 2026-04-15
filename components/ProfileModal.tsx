@@ -24,10 +24,10 @@ const ProfileModal: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user && !newUsername) {
+    if (user) {
       setNewUsername(user.user_metadata?.username || user.email?.split('@')[0] || '');
     }
-  }, [user, newUsername]);
+  }, [user]);
 
   if (!isProfileModalOpen || !user) return null;
 
@@ -58,15 +58,10 @@ const ProfileModal: React.FC = () => {
 
   const handleInstall = async () => {
     if (deferredPrompt) {
-      try {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`User response to the install prompt: ${outcome}`);
-        if (outcome === 'accepted') {
-          setDeferredPrompt(null);
-        }
-      } catch (err) {
-        console.error('Installation failed:', err);
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
       }
     }
   };
@@ -94,7 +89,7 @@ const ProfileModal: React.FC = () => {
       onClick={handleBackdropClick}
     >
       <div 
-        className="w-full max-w-2xl bg-[#141414] border border-white/10 rounded-3xl overflow-hidden shadow-2xl cursor-default animate-in zoom-in-95 slide-in-from-bottom-4 duration-500"
+        className="w-full max-w-2xl bg-[#1c1c1c] border border-white/10 rounded-3xl overflow-hidden shadow-2xl cursor-default animate-in zoom-in-95 slide-in-from-bottom-4 duration-500"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative h-32 bg-gradient-to-br from-[#1ce783]/20 via-[#1ce783]/10 to-cyan-500/20">
@@ -108,7 +103,7 @@ const ProfileModal: React.FC = () => {
             </svg>
           </button>
 
-          <div className="absolute -bottom-10 left-8 p-1 bg-[#141414] rounded-full border-4 border-[#141414] shadow-xl">
+          <div className="absolute -bottom-10 left-8 p-1 bg-[#1c1c1c] rounded-full border-4 border-[#1c1c1c] shadow-xl">
             <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#1ce783] to-cyan-500 flex items-center justify-center text-3xl font-black uppercase italic tracking-tighter text-black">
               {initial}
             </div>

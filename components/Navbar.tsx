@@ -61,7 +61,7 @@ const Navbar: React.FC = () => {
     <nav 
       ref={navRef}
       className={`fixed top-0 left-0 right-0 h-16 md:h-20 z-[100] px-4 md:px-12 flex items-center justify-between transition-colors duration-500 ease-in-out ${
-        isScrolled ? 'bg-[#040404]' : 'bg-gradient-to-b from-black/80 to-transparent'
+        isScrolled ? 'bg-[#121212]' : 'bg-gradient-to-b from-black/80 to-transparent'
       }`}
     >
       <div className="flex items-center gap-6 md:gap-12">

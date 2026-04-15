@@ -17,7 +17,7 @@ const Profile: React.FC = () => {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#040404]">
+      <div className="min-h-screen flex items-center justify-center bg-[#121212]">
         <div className="w-10 h-10 border-4 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -53,7 +53,7 @@ const Profile: React.FC = () => {
 
   return (
     <div 
-      className="pt-20 md:pt-32 pb-20 px-4 md:px-12 min-h-screen bg-[#040404] flex items-start justify-center cursor-pointer"
+      className="pt-20 md:pt-32 pb-20 px-4 md:px-12 min-h-screen bg-[#121212] flex items-start justify-center cursor-pointer"
       onClick={handleBackgroundClick}
     >
       <div 

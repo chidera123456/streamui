@@ -125,7 +125,7 @@ const Category: React.FC = () => {
   };
 
   return (
-    <div className="pt-24 md:pt-32 pb-20 min-h-screen bg-[#040404]">
+    <div className="pt-24 md:pt-32 pb-20 min-h-screen bg-[#121212]">
       <div className="px-6 md:px-16 space-y-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/5 pb-8 gap-4">
           <div className="space-y-2">
