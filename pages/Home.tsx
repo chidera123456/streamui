@@ -204,13 +204,6 @@ const Home: React.FC = () => {
           </div>
           
           <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
-            <div className="flex items-center gap-3 animate-in fade-in duration-700">
-              <span className="text-[#1ce783] text-sm md:text-lg font-black">★ {hero.vote_average.toFixed(1)}</span>
-              <div className="h-[1px] w-8 bg-white/20"></div>
-              <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">
-                {hero.genre_ids?.slice(0, 2).map(id => genreMap[id]).join(' • ')}
-              </span>
-            </div>
             {heroLogo ? (
               <img 
                 src={`${LOGO_URL}${heroLogo}`} 
@@ -222,6 +215,13 @@ const Home: React.FC = () => {
                 {hero.title || hero.name}
               </h1>
             )}
+            <div className="flex items-center gap-3 animate-in fade-in duration-700">
+              <span className="text-[#1ce783] text-sm md:text-lg font-black">★ {hero.vote_average.toFixed(1)}</span>
+              <div className="h-[1px] w-8 bg-white/20"></div>
+              <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">
+                {hero.genre_ids?.slice(0, 2).map(id => genreMap[id]).join(' • ')}
+              </span>
+            </div>
             <p key={`p-${hero.id}`} className="text-gray-300 text-[10px] md:text-base max-w-xl line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
               {hero.overview}
             </p>

@@ -306,14 +306,6 @@ const Details: React.FC = () => {
             <div className={`absolute inset-0 bg-gradient-to-r from-[#121212] via-[#121212]/40 to-transparent z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
             
             <div className="absolute bottom-0 left-0 p-6 md:p-16 w-full max-w-5xl z-20">
-              <div className="flex items-center gap-3 md:gap-4 mb-4 animate-in slide-in-from-left-4 duration-700">
-                <span className="text-[#1ce783] text-sm md:text-xl font-black flex items-center gap-1 drop-shadow-[0_0_10px_rgba(28,231,131,0.5)]">★ {media.vote_average.toFixed(1)}</span>
-                <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
-                <span className="text-white font-black text-xs md:text-sm uppercase tracking-widest">{releaseYear}</span>
-                {lastWatched && (
-                  <span className="ml-2 px-3 py-1 bg-[#1ce783] text-black text-[9px] font-black uppercase rounded-full animate-pulse">Resuming S{currentSeason}:E{currentEpisode}</span>
-                )}
-              </div>
               {mediaLogo ? (
                 <img 
                   src={`${LOGO_URL}${mediaLogo}`} 
@@ -325,6 +317,14 @@ const Details: React.FC = () => {
                   {media.title || media.name}
                 </h1>
               )}
+              <div className="flex items-center gap-3 md:gap-4 mb-6 animate-in slide-in-from-left-4 duration-700">
+                <span className="text-[#1ce783] text-sm md:text-xl font-black flex items-center gap-1 drop-shadow-[0_0_10px_rgba(28,231,131,0.5)]">★ {media.vote_average.toFixed(1)}</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
+                <span className="text-white font-black text-xs md:text-sm uppercase tracking-widest">{releaseYear}</span>
+                {lastWatched && (
+                  <span className="ml-2 px-3 py-1 bg-[#1ce783] text-black text-[9px] font-black uppercase rounded-full animate-pulse">Resuming S{currentSeason}:E{currentEpisode}</span>
+                )}
+              </div>
               <div className="flex flex-nowrap gap-2 md:gap-4 animate-in slide-in-from-bottom-4 duration-1000">
                 <button onClick={() => playMedia()} className="flex-1 md:flex-none bg-white text-black px-4 md:px-10 py-3 md:py-4 rounded-sm font-black text-[10px] md:text-lg hover:bg-[#1ce783] transition-all transform active:scale-95 flex items-center justify-center gap-2 md:gap-3 uppercase tracking-widest shadow-2xl whitespace-nowrap">
                   {lastWatched ? 'Continue' : 'Watch Now'}
