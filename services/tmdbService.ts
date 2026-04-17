@@ -2,29 +2,46 @@
 import { TMDB_API_KEY, TMDB_BASE_URL } from '../constants.ts';
 import { Movie, Episode, Collection } from '../types.ts';
 
-const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 1000 * 60 * 30; // 30 minutes
+const CACHE_KEY_PREFIX = 'zenstream-cache-';
+const CACHE_DURATION = 1000 * 60 * 60 * 24; // 24 hours for better persistence
+
+const saveToLocalStorage = (key: string, data: any) => {
+  try {
+    const serialized = JSON.stringify({ data, timestamp: Date.now() });
+    localStorage.setItem(`${CACHE_KEY_PREFIX}${key}`, serialized);
+  } catch (err) {
+    // Falls back to memory-only if storage is full or unavailable
+  }
+};
+
+export const getFromCache = (key: string) => {
+  try {
+    const item = localStorage.getItem(`${CACHE_KEY_PREFIX}${key}`);
+    if (!item) return null;
+    const { data, timestamp } = JSON.parse(item);
+    if (Date.now() - timestamp < CACHE_DURATION) {
+      return data;
+    }
+    localStorage.removeItem(`${CACHE_KEY_PREFIX}${key}`);
+  } catch (err) {
+    return null;
+  }
+  return null;
+};
 
 const handleResponse = async (response: Response, cacheKey?: string) => {
   if (!response.ok) {
-    if (cacheKey && cache.has(cacheKey)) {
-      return cache.get(cacheKey)!.data;
+    if (cacheKey) {
+      const cached = getFromCache(cacheKey);
+      if (cached) return cached;
     }
     throw new Error(`TMDB Request failed: ${response.status}`);
   }
   const data = await response.json();
   if (cacheKey) {
-    cache.set(cacheKey, { data, timestamp: Date.now() });
+    saveToLocalStorage(cacheKey, data);
   }
   return data;
-};
-
-export const getFromCache = (key: string) => {
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.data;
-  }
-  return null;
 };
 
 const secureFetch = async (url: string) => {
@@ -70,8 +87,7 @@ export const fetchTrending = async (type: 'movie' | 'tv' | 'all' = 'movie', page
       totalPages: data.total_pages || 1
     };
   } catch (err: any) {
-    const oldCache = cache.get(cacheKey);
-    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+    return getFromCache(cacheKey) || { results: [], totalPages: 0 };
   }
 };
 
@@ -88,8 +104,7 @@ export const fetchAwardWinning = async (type: 'movie' | 'tv', page: number = 1):
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    const oldCache = cache.get(cacheKey);
-    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+    return getFromCache(cacheKey) || { results: [], totalPages: 0 };
   }
 };
 
@@ -103,8 +118,7 @@ export const fetchNetflixContent = async (page: number = 1): Promise<{ results: 
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    const oldCache = cache.get(cacheKey);
-    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+    return getFromCache(cacheKey) || { results: [], totalPages: 0 };
   }
 };
 
@@ -118,8 +132,7 @@ export const fetchUpcomingMovies = async (page: number = 1): Promise<{ results: 
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    const oldCache = cache.get(cacheKey);
-    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+    return getFromCache(cacheKey) || { results: [], totalPages: 0 };
   }
 };
 
@@ -133,8 +146,7 @@ export const fetchUpcomingTV = async (page: number = 1): Promise<{ results: Movi
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    const oldCache = cache.get(cacheKey);
-    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+    return getFromCache(cacheKey) || { results: [], totalPages: 0 };
   }
 };
 
@@ -218,8 +230,7 @@ export const fetchAnime = async (page: number = 1, subGenre?: number): Promise<{
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    const oldCache = cache.get(cacheKey);
-    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+    return getFromCache(cacheKey) || { results: [], totalPages: 0 };
   }
 };
 
@@ -233,8 +244,7 @@ export const fetchComedyTV = async (page: number = 1): Promise<{ results: Movie[
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    const oldCache = cache.get(cacheKey);
-    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+    return getFromCache(cacheKey) || { results: [], totalPages: 0 };
   }
 };
 
@@ -248,8 +258,7 @@ export const fetchTopRatedTV = async (page: number = 1): Promise<{ results: Movi
       totalPages: data.total_pages || 1
     };
   } catch (err) {
-    const oldCache = cache.get(cacheKey);
-    return oldCache ? { results: oldCache.data.results, totalPages: oldCache.data.total_pages } : { results: [], totalPages: 0 };
+    return getFromCache(cacheKey) || { results: [], totalPages: 0 };
   }
 };
 
@@ -280,18 +289,22 @@ export const fetchSimilar = async (id: number, type: 'movie' | 'tv'): Promise<Mo
 export const fetchLogos = async (id: number, type: 'movie' | 'tv'): Promise<string | null> => {
   const cacheKey = `logos-${type}-${id}`;
   const cached = getFromCache(cacheKey);
-  if (cached) return cached;
 
-  try {
-    const response = await secureFetch(`${TMDB_BASE_URL}/${type}/${id}/images?api_key=${TMDB_API_KEY}&include_image_language=en,null`);
-    const data = await handleResponse(response, cacheKey);
-    if (data.logos && data.logos.length > 0) {
-      // Prefer English logos, then any
+  const extractLogo = (data: any) => {
+    if (data && data.logos && data.logos.length > 0) {
       const englishLogo = data.logos.find((l: any) => l.iso_639_1 === 'en');
       const logo = englishLogo || data.logos[0];
       return logo.file_path;
     }
     return null;
+  };
+
+  if (cached) return extractLogo(cached);
+
+  try {
+    const response = await secureFetch(`${TMDB_BASE_URL}/${type}/${id}/images?api_key=${TMDB_API_KEY}&include_image_language=en,null`);
+    const data = await handleResponse(response, cacheKey);
+    return extractLogo(data);
   } catch (err) {
     return null;
   }

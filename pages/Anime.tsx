@@ -15,8 +15,29 @@ const Anime: React.FC = () => {
   const [fantasy, setFantasy] = useState<Movie[]>(() => getFromCache('anime-1-10765')?.results || []);
   
   // Initialize with a random index to satisfy "change after reloading app"
-  const [heroIndex, setHeroIndex] = useState(() => Math.floor(Math.random() * 10));
-  const [heroLogo, setHeroLogo] = useState<string | null>(null);
+  const [heroIndex, setHeroIndex] = useState(() => {
+    const saved = sessionStorage.getItem('zenstream-anime-hero-index');
+    if (saved !== null) return parseInt(saved, 10);
+    const index = Math.floor(Math.random() * 10);
+    sessionStorage.setItem('zenstream-anime-hero-index', index.toString());
+    return index;
+  });
+  const [heroLogos, setHeroLogos] = useState<Record<number, string | null>>(() => {
+    const initialLogos: Record<number, string | null> = {};
+    const animeCache = getFromCache('anime-1-all');
+    if (animeCache && animeCache.results) {
+      animeCache.results.slice(0, 10).forEach((m: { id: number }) => {
+        const cacheKey = `logos-tv-${m.id}`;
+        const cachedLogo = getFromCache(cacheKey);
+        if (cachedLogo && cachedLogo.logos && cachedLogo.logos.length > 0) {
+          const englishLogo = (cachedLogo.logos as { iso_639_1: string, file_path: string }[]).find(l => l.iso_639_1 === 'en');
+          const logo = englishLogo || cachedLogo.logos[0];
+          initialLogos[m.id] = logo.file_path;
+        }
+      });
+    }
+    return initialLogos;
+  });
 
   const [loadingTrending, setLoadingTrending] = useState(trending.length === 0);
   const [loadingAction, setLoadingAction] = useState(action.length === 0);
@@ -37,6 +58,12 @@ const Anime: React.FC = () => {
     fetchAnime(1).then(res => {
       if (res?.results) {
         setTrending(res.results);
+        // Pre-fetch logos for anime heroes
+        res.results.slice(0, 6).forEach(m => {
+          fetchLogos(m.id, 'tv').then(logo => {
+            if (logo) setHeroLogos(prev => ({ ...prev, [m.id]: logo }));
+          });
+        });
       }
       setLoadingTrending(false);
     });
@@ -57,10 +84,12 @@ const Anime: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (hero) {
-      fetchLogos(hero.id, 'tv').then(setHeroLogo);
+    if (hero && !heroLogos[hero.id]) {
+      fetchLogos(hero.id, 'tv').then(logo => {
+        if (logo) setHeroLogos(prev => ({ ...prev, [hero.id]: logo }));
+      });
     }
-  }, [hero]);
+  }, [hero, heroLogos]);
 
   useEffect(() => {
     if (heroList.length > 0) {
@@ -95,16 +124,24 @@ const Anime: React.FC = () => {
           </div>
           
           <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
-            {heroLogo ? (
+            {heroLogos[hero.id] ? (
               <img 
-                src={`${LOGO_URL}${heroLogo}`} 
+                src={`${LOGO_URL}${heroLogos[hero.id]}`} 
                 alt={hero.name}
                 className="h-16 md:h-32 lg:h-48 w-auto object-contain animate-in slide-in-from-left-6 duration-700 drop-shadow-2xl"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  setHeroLogos(prev => ({ ...prev, [hero.id]: null }));
+                }}
+                fetchPriority="high"
               />
             ) : (
-              <h1 key={`h1-${hero.id}`} className="text-3xl md:text-7xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700">
-                {hero.name}
-              </h1>
+              <div className="h-16 md:h-32 lg:h-48 flex items-center">
+                <h1 key={`h1-${hero.id}`} className="text-3xl md:text-7xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700 opacity-20">
+                  {hero.name}
+                </h1>
+              </div>
             )}
             <div className="flex items-center gap-3 animate-in fade-in duration-700">
               <span className="text-[#1ce783] text-sm md:text-lg font-black">★ {hero.vote_average.toFixed(1)}</span>
