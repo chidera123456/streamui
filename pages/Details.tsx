@@ -378,19 +378,6 @@ const Details: React.FC = () => {
                   <button onClick={() => toggleWatchlist(media)} className="flex-1 md:flex-none bg-white/10 backdrop-blur-xl text-white border border-white/20 px-4 md:px-10 py-3 md:py-4 rounded-sm font-black text-[10px] md:text-lg hover:bg-white/20 transition-all flex items-center justify-center gap-2 md:gap-3 uppercase tracking-widest whitespace-nowrap">
                     {inList ? 'Saved' : 'Add To List'}
                   </button>
-                  <a 
-                    href={`https://videodownloader.site/en/search?q=${encodeURIComponent(media.title || media.name || '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 md:flex-none bg-white/5 backdrop-blur-xl text-white border border-white/10 px-4 md:px-10 py-3 md:py-4 rounded-sm font-black text-[10px] md:text-lg hover:bg-[#1ce783] hover:text-black transition-all flex items-center justify-center gap-2 md:gap-3 uppercase tracking-widest whitespace-nowrap"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="7 10 12 15 17 10"></polyline>
-                      <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    Download
-                  </a>
                 </div>
               )}
             </div>
@@ -412,20 +399,6 @@ const Details: React.FC = () => {
                     ))}
                   </div>
                 </div>
-                
-                <a 
-                  href={`https://videodownloader.site/en/search?q=${encodeURIComponent(media.title || media.name || '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-[#1ce783] text-black px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-white transition-all flex items-center gap-2 shadow-lg"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                  </svg>
-                  Download Source
-                </a>
               </div>
               <p className="text-gray-200 text-sm md:text-lg leading-relaxed max-w-5xl">{media.overview}</p>
             </section>
@@ -485,23 +458,7 @@ const Details: React.FC = () => {
                       <div className="px-1">
                         <div className="flex items-center justify-between mb-1">
                           <h4 className="text-[12px] md:text-sm font-black text-white uppercase tracking-tight truncate flex-1 pr-4">{ep.name}</h4>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <a 
-                              href={`https://videodownloader.site/en/search?q=${encodeURIComponent(`${media.name} Season ${currentSeason} Episode ${ep.episode_number}`)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-1 px-2 rounded-md bg-white/10 hover:bg-[#1ce783] hover:text-black text-white/40 transition-all"
-                              title="Download Episode"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                              </svg>
-                            </a>
-                            <span className={`text-[10px] font-black ${isActive ? 'text-[#1ce783]' : 'text-gray-500'}`}>EP {ep.episode_number}</span>
-                          </div>
+                          <span className={`text-[10px] font-black ${isActive ? 'text-[#1ce783]' : 'text-gray-500'} shrink-0`}>EP {ep.episode_number}</span>
                         </div>
                         <p className="text-[10px] md:text-[11px] text-gray-500 line-clamp-2 leading-relaxed font-medium">{ep.overview || "No description available."}</p>
                       </div>
