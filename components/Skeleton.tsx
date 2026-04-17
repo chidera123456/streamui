@@ -14,7 +14,7 @@ const Skeleton: React.FC<SkeletonProps> = ({ className = "" }) => {
 
 export const CardSkeleton: React.FC = () => (
   <div className="space-y-3">
-    <Skeleton className="aspect-[2/3] rounded-sm" />
+    <Skeleton className="aspect-[2/3] rounded-xl" />
     <div className="space-y-1.5 px-1">
       <Skeleton className="h-3 w-3/4 rounded-sm" />
       <Skeleton className="h-2 w-1/2 rounded-sm opacity-50" />

@@ -32,33 +32,60 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { user } = useAuth();
   
   const [watchlist, setWatchlist] = useState<Movie[]>(() => {
-    const cached = localStorage.getItem(WATCHLIST_CACHE_KEY);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem(WATCHLIST_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.error('Failed to parse watchlist from localStorage:', e);
+      return [];
+    }
   });
   
   const [history, setHistory] = useState<HistoryItem[]>(() => {
-    const cached = localStorage.getItem(HISTORY_CACHE_KEY);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem(HISTORY_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.error('Failed to parse history from localStorage:', e);
+      return [];
+    }
   });
 
   const [notifications, setNotifications] = useState<Notification[]>(() => {
-    const cached = localStorage.getItem(NOTIFICATIONS_CACHE_KEY);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem(NOTIFICATIONS_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.error('Failed to parse notifications from localStorage:', e);
+      return [];
+    }
   });
 
   const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(WATCHLIST_CACHE_KEY, JSON.stringify(watchlist));
+    try {
+      localStorage.setItem(WATCHLIST_CACHE_KEY, JSON.stringify(watchlist));
+    } catch {
+      // Quota exceeded
+    }
   }, [watchlist]);
 
   useEffect(() => {
-    localStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(history));
+    try {
+      localStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(history));
+    } catch {
+      // Quota exceeded
+    }
   }, [history]);
 
   useEffect(() => {
-    localStorage.setItem(NOTIFICATIONS_CACHE_KEY, JSON.stringify(notifications));
+    try {
+      localStorage.setItem(NOTIFICATIONS_CACHE_KEY, JSON.stringify(notifications));
+    } catch {
+      // Quota exceeded
+    }
   }, [notifications]);
 
   useEffect(() => {
@@ -120,7 +147,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cloudMovies = data.map(item => item.media_data as Movie).filter(Boolean);
         setWatchlist(cloudMovies);
       }
-    } catch (err) {
+    } catch {
       console.debug("Watchlist background sync failed");
     }
   }, [user]);
@@ -143,7 +170,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }));
         setHistory(cloudItems);
       }
-    } catch (err) {
+    } catch {
       console.debug("History background sync failed");
     }
   }, [user]);
@@ -198,7 +225,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           media_data: movie
         });
       }
-    } catch (err) {
+    } catch {
       if (exists) setWatchlist(prev => [...prev, movie]);
       else setWatchlist(prev => prev.filter(m => m.id !== movie.id));
     }
@@ -234,7 +261,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         season,
         episode
       }, { onConflict: 'user_id, media_id' });
-    } catch (err) {
+    } catch {
       console.debug("History sync error");
     }
   };
@@ -246,7 +273,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       await supabase.from('watch_history').delete().eq('user_id', user.id).eq('media_id', mediaId);
-    } catch (err) {
+    } catch {
       console.debug("Failed to remove from cloud history");
     }
   };

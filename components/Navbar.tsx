@@ -65,8 +65,16 @@ const Navbar: React.FC = () => {
       }`}
     >
       <div className="flex items-center gap-6 md:gap-12">
-        <Link to="/" className="flex items-center gap-2 group shrink-0 transform-gpu active:scale-95 transition-transform duration-150">
-          <span className="text-white font-black text-xl md:text-2xl lg:text-3xl tracking-tighter uppercase italic drop-shadow-lg">
+        <Link to="/" className="flex items-center gap-1.5 group shrink-0 transform-gpu active:scale-95 transition-transform duration-150">
+          <div className="w-4 h-6 md:w-5 md:h-7 relative flex items-center justify-center">
+            <svg viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-[0_0_8px_rgba(28,231,131,0.6)]">
+              {/* Perspective Ribbon Z with Netflix-style bottom curve */}
+              <path d="M4 6H20" stroke="#1ce783" strokeWidth="6" strokeLinecap="round" className="opacity-70" />
+              <path d="M20 6L4 30" stroke="#1ce783" strokeWidth="7" strokeLinecap="round" />
+              <path d="M4 30C4 30 12 33 20 30" stroke="#1ce783" strokeWidth="6" strokeLinecap="round" className="opacity-70" />
+            </svg>
+          </div>
+          <span className="text-white font-black text-sm md:text-base lg:text-lg tracking-tighter uppercase italic leading-none pt-0.5">
             ZEN<span className="text-[#1ce783]">STREAM</span>
           </span>
         </Link>

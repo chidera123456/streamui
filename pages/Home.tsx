@@ -11,19 +11,17 @@ import { HeroSkeleton, GridSkeleton } from '../components/Skeleton';
 
 const HorizontalSection: React.FC<{ 
   title: string; 
-  subtitle?: string; 
   movies: Movie[]; 
   color?: string;
   onRemoveItem?: (id: number) => void;
-}> = ({ title, subtitle, movies, color = "#1ce783", onRemoveItem }) => {
+}> = ({ title, movies, color = "#1ce783", onRemoveItem }) => {
   if (movies.length === 0) return null;
 
   return (
     <section className="relative space-y-6">
       <div className="flex items-end justify-between px-6 md:px-16 border-b border-white/5 pb-4">
         <div className="space-y-1">
-          {subtitle && <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color }}>{subtitle}</p>}
-          <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter" style={{ color }}>
+          <h2 className="text-lg md:text-xl font-black uppercase italic tracking-tighter" style={{ color }}>
             {title}
           </h2>
         </div>
@@ -49,12 +47,11 @@ const HorizontalSection: React.FC<{
 
 const MediaSection: React.FC<{ 
   title: string; 
-  subtitle?: string; 
   movies: Movie[]; 
   loading: boolean; 
   color?: string;
   categoryId?: string;
-}> = ({ title, subtitle, movies, loading, color = "#1ce783", categoryId }) => {
+}> = ({ title, movies, loading, color = "#1ce783", categoryId }) => {
   const showSkeleton = loading && movies.length === 0;
 
   if (!loading && movies.length === 0) return null;
@@ -63,8 +60,7 @@ const MediaSection: React.FC<{
     <section className="relative space-y-6 px-6 md:px-16">
       <div className="flex items-end justify-between border-b border-white/5 pb-4">
         <div className="space-y-1">
-          {subtitle && <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color }}>{subtitle}</p>}
-          <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter" style={{ color }}>
+          <h2 className="text-lg md:text-xl font-black uppercase italic tracking-tighter" style={{ color }}>
             {title}
           </h2>
         </div>
@@ -98,13 +94,7 @@ const Home: React.FC = () => {
   const [comedyTV, setComedyTV] = useState<Movie[]>(() => getFromCache('comedy-tv-1')?.results || []);
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>(() => getFromCache('top-rated-tv-1')?.results || []);
   
-  const [heroIndex, setHeroIndex] = useState(() => {
-    const saved = sessionStorage.getItem('zenstream-hero-index');
-    if (saved !== null) return parseInt(saved, 10);
-    const index = Math.floor(Math.random() * 10);
-    sessionStorage.setItem('zenstream-hero-index', index.toString());
-    return index;
-  });
+  const [heroIndex, setHeroIndex] = useState(() => Math.floor(Math.random() * 12));
   const [heroLogos, setHeroLogos] = useState<Record<number, string | null>>(() => {
     const initialLogos: Record<number, string | null> = {};
     const trendingCache = getFromCache('trending-movie-1');
@@ -132,10 +122,32 @@ const Home: React.FC = () => {
   const [genreMap, setGenreMap] = useState<Record<number, string>>({});
 
   const heroList = useMemo(() => {
-    if (trending.length === 0) return [];
-    const backdropResults = trending.filter(m => m.backdrop_path);
-    return (backdropResults.length > 0 ? backdropResults : trending).slice(0, 6);
-  }, [trending]);
+    if (trending.length === 0 && tvTrending.length === 0) return [];
+    
+    // Prioritize top movies (9) and include some TV shows (3)
+    const topMovies = trending
+      .filter(m => m.backdrop_path)
+      .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+      .slice(0, 9);
+      
+    const topTV = tvTrending
+      .filter(m => m.backdrop_path)
+      .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+      .slice(0, 3);
+      
+    const mix = [...topMovies, ...topTV];
+    
+    // Fill with remaining popular items if needed
+    if (mix.length < 12) {
+      const existingIds = new Set(mix.map(m => m.id));
+      const extra = [...trending, ...tvTrending]
+        .filter(m => m.backdrop_path && !existingIds.has(m.id))
+        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+      return [...mix, ...extra].slice(0, 12);
+    }
+    
+    return mix;
+  }, [trending, tvTrending]);
 
   const hero = useMemo(() => {
     if (heroList.length === 0) return null;
@@ -173,7 +185,15 @@ const Home: React.FC = () => {
     });
 
     fetchTrending('tv', 1).then(res => {
-      if (res?.results) setTvTrending(res.results);
+      if (res?.results) {
+        setTvTrending(res.results);
+        // Pre-fetch logos for TV hero items
+        res.results.slice(0, 6).forEach(m => {
+          fetchLogos(m.id, 'tv').then(logo => {
+            if (logo) setHeroLogos(prev => ({ ...prev, [m.id]: logo }));
+          });
+        });
+      }
       setLoadingTV(false);
     });
 
@@ -207,7 +227,7 @@ const Home: React.FC = () => {
       
       rotationTimerRef.current = window.setInterval(() => {
         setHeroIndex(prev => (prev + 1));
-      }, 180000);
+      }, 30000);
     }
     return () => {
       if (rotationTimerRef.current) clearInterval(rotationTimerRef.current);
@@ -219,7 +239,7 @@ const Home: React.FC = () => {
       {!hero && (loadingTrending) ? (
         <HeroSkeleton />
       ) : hero && (
-        <section className="relative h-[70vh] md:h-[90vh] w-full overflow-hidden">
+        <section className="relative h-[60vh] md:h-[80vh] w-full overflow-hidden">
           <div className="absolute inset-0">
             <img 
               key={hero.id}
@@ -232,12 +252,12 @@ const Home: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-[#121212] via-transparent to-transparent" />
           </div>
           
-          <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
+          <div className="absolute bottom-0 left-0 p-6 md:p-12 max-w-3xl space-y-3 md:space-y-4 z-20">
             {heroLogos[hero.id] ? (
               <img 
                 src={`${LOGO_URL}${heroLogos[hero.id]}`} 
                 alt={hero.title || hero.name}
-                className="h-16 md:h-32 lg:h-48 w-auto object-contain animate-in slide-in-from-left-6 duration-700 drop-shadow-2xl"
+                className="h-12 md:h-24 lg:h-32 w-auto object-contain animate-in slide-in-from-left-6 duration-700 drop-shadow-2xl"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
@@ -246,32 +266,32 @@ const Home: React.FC = () => {
                 fetchPriority="high"
               />
             ) : (
-              <div className="h-16 md:h-32 lg:h-48 flex items-center">
-                <h1 key={`h1-${hero.id}`} className="text-3xl md:text-7xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700 opacity-20">
+              <div className="h-12 md:h-24 lg:h-32 flex items-center">
+                <h1 key={`h1-${hero.id}`} className="text-2xl md:text-5xl font-black tracking-tighter leading-tight uppercase italic drop-shadow-2xl animate-in slide-in-from-left-6 duration-700 opacity-20">
                   {hero.title || hero.name}
                 </h1>
               </div>
             )}
-            <div className="flex items-center gap-3 animate-in fade-in duration-700">
-              <span className="text-[#1ce783] text-sm md:text-lg font-black">★ {hero.vote_average.toFixed(1)}</span>
-              <div className="h-[1px] w-8 bg-white/20"></div>
-              <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">
+            <div className="flex items-center gap-2 animate-in fade-in duration-700">
+              <span className="text-[#1ce783] text-[10px] md:text-sm font-black">★ {hero.vote_average.toFixed(1)}</span>
+              <div className="h-[1px] w-6 bg-white/20"></div>
+              <span className="text-white/40 text-[8px] font-black uppercase tracking-widest">
                 {hero.genre_ids?.slice(0, 2).map(id => genreMap[id]).join(' • ')}
               </span>
             </div>
-            <p key={`p-${hero.id}`} className="text-gray-300 text-[10px] md:text-base max-w-xl line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
+            <p key={`p-${hero.id}`} className="text-gray-300 text-[9px] md:text-sm max-w-xl line-clamp-2 md:line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
               {hero.overview}
             </p>
-            <div className="flex items-center gap-4 pt-2 animate-in slide-in-from-bottom-4 duration-1000">
+            <div className="flex items-center gap-3 pt-1 animate-in slide-in-from-bottom-4 duration-1000">
               <Link 
                 to={`/details/${hero.media_type || 'movie'}/${hero.id}`}
-                className="bg-[#1ce783] text-black px-8 md:px-12 py-2.5 md:py-3 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest hover:bg-white transition-all transform active:scale-95 shadow-2xl"
+                className="bg-[#1ce783] text-black px-6 md:px-10 py-2 md:py-2.5 rounded-sm font-black text-[9px] md:text-xs uppercase tracking-widest hover:bg-white transition-all transform active:scale-95 shadow-2xl"
               >
                 Watch
               </Link>
               <Link 
                 to={`/details/${hero.media_type || 'movie'}/${hero.id}`}
-                className="bg-white/10 backdrop-blur-md text-white px-6 md:px-10 py-2.5 md:py-3 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
+                className="bg-white/10 backdrop-blur-md text-white px-5 md:px-8 py-2 md:py-2.5 rounded-sm font-black text-[9px] md:text-xs uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
               >
                 Details
               </Link>

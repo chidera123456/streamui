@@ -14,7 +14,9 @@ interface Props {
 const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   
-  const title = media.title || media.name;
+  if (!media) return null;
+
+  const title = media.title || media.name || 'Unknown Title';
   const year = (media.release_date || media.first_air_date || '').substring(0, 4);
   const poster = media.poster_path 
     ? `${IMG_URL}${media.poster_path}`
@@ -30,7 +32,7 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) 
 
   return (
     <div 
-      className="group relative bg-[#1c1c1c] rounded-sm overflow-hidden border border-white/5 transition-all duration-500 hover:scale-105 hover:z-20 hover:shadow-[0_20px_40px_rgba(0,0,0,0.6)] w-full"
+      className="group relative bg-[#1c1c1c] rounded-xl overflow-hidden border border-white/5 transition-all duration-500 hover:scale-105 hover:z-20 hover:shadow-[0_20px_40px_rgba(0,0,0,0.6)] w-full"
     >
       <Link to={`/details/${media.media_type}/${media.id}`}>
         <div className="aspect-[2/3] relative">
@@ -46,7 +48,7 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) 
 
           {/* Type Badge */}
           <div className="absolute top-2 right-2 z-10">
-            <div className="bg-[#1ce783] text-black text-[7px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-widest shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="bg-[#1ce783] text-black text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
               {media.media_type === 'tv' ? 'Series' : 'Movie'}
             </div>
           </div>

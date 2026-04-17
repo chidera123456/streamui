@@ -133,7 +133,7 @@ const Upcoming: React.FC = () => {
               <div key={item.id} className="space-y-4 group">
                 <div className="relative">
                   <MediaCard media={item} />
-                  <div className="absolute -bottom-1 -right-1 bg-amber-500 text-black px-2 py-0.5 rounded-sm text-[7px] font-black uppercase tracking-tighter shadow-2xl z-10">
+                  <div className="absolute -bottom-1 -right-1 bg-amber-500 text-black px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-tighter shadow-2xl z-10">
                     {formatDate(item.release_date || '')}
                   </div>
                 </div>
@@ -173,7 +173,7 @@ const Upcoming: React.FC = () => {
               <div key={item.id} className="space-y-4 group">
                 <div className="relative">
                   <MediaCard media={item} />
-                  <div className="absolute -bottom-1 -right-1 bg-amber-500 text-black px-2 py-0.5 rounded-sm text-[7px] font-black uppercase tracking-tighter shadow-2xl z-10">
+                  <div className="absolute -bottom-1 -right-1 bg-amber-500 text-black px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-tighter shadow-2xl z-10">
                     {formatDate(item.first_air_date || '')}
                   </div>
                 </div>

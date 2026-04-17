@@ -33,12 +33,10 @@ const Search: React.FC = () => {
 
   useEffect(() => {
     const loadGenres = async () => {
-      if (type !== 'all') {
-        const data = await fetchGenres(type);
-        setGenres(data);
-      } else {
-        setGenres([]);
-      }
+      // Fetch movie genres by default for 'all' to show a comprehensive list
+      const fetchType = type === 'all' ? 'movie' : type;
+      const data = await fetchGenres(fetchType);
+      setGenres(data);
     };
     loadGenres();
   }, [type]);
@@ -117,12 +115,25 @@ const Search: React.FC = () => {
             saveToHistory(searchQuery);
           }
         }
-      } else if (type !== 'all' && (selectedGenre || selectedYear || minRating > 0)) {
-        res = await discoverMedia(type, pageNum, { 
-          genre: selectedGenre || undefined, 
-          year: selectedYear || undefined, 
-          rating: minRating || undefined 
-        });
+      } else if (selectedGenre || selectedYear || minRating > 0) {
+        if (type === 'all') {
+          // Fetch both and merge shuffles by popularity
+          const [movieRes, tvRes] = await Promise.all([
+            discoverMedia('movie', pageNum, { genre: selectedGenre || undefined, year: selectedYear || undefined, rating: minRating || undefined }),
+            discoverMedia('tv', pageNum, { genre: selectedGenre || undefined, year: selectedYear || undefined, rating: minRating || undefined })
+          ]);
+          
+          res = {
+            results: [...movieRes.results, ...tvRes.results].sort((a, b) => (b.popularity || 0) - (a.popularity || 0)),
+            totalPages: Math.max(movieRes.totalPages, tvRes.totalPages)
+          };
+        } else {
+          res = await discoverMedia(type, pageNum, { 
+            genre: selectedGenre || undefined, 
+            year: selectedYear || undefined, 
+            rating: minRating || undefined 
+          });
+        }
       } else {
         res = { results: [], totalPages: 0 };
       }
@@ -174,13 +185,20 @@ const Search: React.FC = () => {
   };
 
   return (
-    <div className="pt-12 md:pt-32 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
-      <div className="mb-8 md:mb-12 text-center">
-        <h1 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter mb-2 md:mb-4">
-          Search <span className="text-[#1ce783]">Engine</span>
+    <div className="relative min-h-screen overflow-x-hidden bg-black">
+      {/* Cinematic Full-Width Underlay Gradient (Netflix-style) */}
+      <div className="absolute top-0 left-0 right-0 h-[100vh] pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[200vw] h-full bg-[radial-gradient(ellipse_at_top,_rgba(28,231,131,0.15)_0%,_rgba(28,231,131,0.05)_40%,_transparent_80%)]" />
+        <div className="absolute top-0 left-0 right-0 h-[60vh] bg-gradient-to-b from-[#1ce783]/8 to-transparent" />
+      </div>
+
+      <div className="relative z-10 pt-12 md:pt-32 pb-20 px-4 md:px-12 max-w-7xl mx-auto">
+        <div className="mb-8 md:mb-12 text-center">
+        <h1 className="text-lg md:text-xl font-bold uppercase tracking-[0.3em] text-[#1ce783] mb-2">
+          Discovery
         </h1>
         <p className="text-gray-500 uppercase text-[8px] md:text-[10px] font-black tracking-[0.4em] min-h-[1em]">
-          {isCorrecting ? 'AI Refining Search...' : 'Discover your next favorite story'}
+          {isCorrecting && 'AI Refining Search...'}
         </p>
       </div>
 
@@ -220,11 +238,11 @@ const Search: React.FC = () => {
                   if (e.target.value.trim()) setSelectedGenre(null); // Clear genre if typing
                 }}
                 placeholder="Title, genre, or description..."
-                className="w-full bg-[#111] border-b-2 border-white/10 px-0 py-3 md:py-4 text-lg md:text-xl outline-none focus:border-[#1ce783] transition-all"
+                className="w-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-6 py-3 md:py-5 text-lg md:text-xl outline-none focus:border-[#1ce783]/50 focus:bg-white/10 transition-all shadow-2xl placeholder:opacity-30"
               />
               
               {showDropdown && (suggestions.length > 0 || (query.trim() === '' && searchHistory.length > 0)) && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-[#0c0c0c]/95 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute top-full left-0 right-0 mt-3 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   
                   {query.trim() === '' && searchHistory.length > 0 && (
                     <div>
@@ -331,7 +349,7 @@ const Search: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading || isCorrecting}
-                className="flex-1 md:flex-none bg-white hover:bg-[#1ce783] text-black px-6 md:px-10 py-3 md:py-4 rounded-sm font-black text-xs md:text-base uppercase tracking-widest transition-all transform-gpu active:scale-95 shadow-2xl"
+                className="flex-1 md:flex-none bg-white hover:bg-[#1ce783] text-black px-6 md:px-10 py-3 md:py-4 rounded-full font-black text-xs md:text-base uppercase tracking-widest transition-all transform-gpu active:scale-95 shadow-2xl"
               >
                 {loading || isCorrecting ? '...' : 'Search'}
               </button>
@@ -340,8 +358,7 @@ const Search: React.FC = () => {
         </form>
 
         {/* Quick Genre Selection Bar */}
-        {type !== 'all' && (
-          <div className="pt-2 animate-in fade-in duration-500">
+        <div className="pt-2 animate-in fade-in duration-500">
             <div className="flex items-center justify-between mb-3 px-1">
               <span className="text-[9px] font-black uppercase text-gray-500 tracking-[0.2em]">Explore Categories</span>
               {selectedGenre && (
@@ -377,7 +394,6 @@ const Search: React.FC = () => {
               )}
             </div>
           </div>
-        )}
 
         {showFilters && (
           <div className="bg-[#0c0c0c] border border-white/5 rounded-2xl p-6 md:p-8 space-y-6 md:space-y-8 shadow-2xl animate-in slide-in-from-top-4 duration-300">
@@ -480,21 +496,10 @@ const Search: React.FC = () => {
       
       {!loading && results.length === 0 && !query && !selectedGenre && (
         <div className="text-center py-32">
-          <div className="max-w-md mx-auto space-y-8">
-            <p className="text-gray-500 text-[11px] font-black uppercase tracking-[0.4em] opacity-40">Discovery Mode</p>
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => { setType('movie'); triggerSearch(1, false, false, 'Action'); }} className="bg-white/5 border border-white/5 p-6 rounded-3xl hover:border-[#1ce783]/30 transition-all group">
-                <span className="block text-2xl mb-2 group-hover:scale-110 transition-transform">🔥</span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Trending Movies</span>
-              </button>
-              <button onClick={() => { setType('tv'); triggerSearch(1, false, false, 'Drama'); }} className="bg-white/5 border border-white/5 p-6 rounded-3xl hover:border-[#1ce783]/30 transition-all group">
-                <span className="block text-2xl mb-2 group-hover:scale-110 transition-transform">📺</span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Must-Watch TV</span>
-              </button>
-            </div>
-          </div>
+          <p className="text-gray-500 text-[11px] font-black uppercase tracking-[0.4em] opacity-40">Discovery Mode</p>
         </div>
       )}
+      </div>
     </div>
   );
 };

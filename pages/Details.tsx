@@ -317,32 +317,37 @@ const Details: React.FC = () => {
                 )}
                 <div className={`absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-[#121212]/40 z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
                 <div className={`absolute inset-0 bg-gradient-to-r from-[#121212] via-[#121212]/40 to-transparent z-10 transition-opacity duration-1000 ${autoPreviewActive ? 'opacity-40' : 'opacity-100'}`} />
-                
-                {trailer && (
-                  <div className="absolute top-6 right-6 md:top-24 md:right-16 z-30 flex flex-col items-center gap-2 md:gap-3">
-                    <button 
-                      onClick={() => setAutoPreviewActive(!autoPreviewActive)}
-                      className={`relative w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden shadow-2xl group/toggle ${autoPreviewActive ? 'bg-[#1ce783] text-black scale-110 ring-4 ring-[#1ce783]/20' : 'bg-black/40 backdrop-blur-xl border border-white/20 text-white hover:bg-[#1ce783] hover:text-black'}`}
-                    >
-                      <div className={`absolute inset-0 bg-gradient-to-tr from-[#1ce783] to-cyan-500 opacity-0 group-hover/toggle:opacity-100 transition-opacity ${autoPreviewActive ? 'opacity-100' : ''}`} />
-                      <div className={`relative z-10 transition-transform duration-1000 ${autoPreviewActive ? 'animate-[spin_4s_linear_infinite]' : ''}`}>
-                        {autoPreviewActive ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                        )}
-                      </div>
-                    </button>
-                    <span className={`text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] transition-opacity duration-500 ${autoPreviewActive ? 'text-[#1ce783]' : 'text-white/40'}`}>
-                      {autoPreviewActive ? 'Active' : 'Trailer'}
-                    </span>
-                  </div>
-                )}
               </>
             )}
 
+            {trailer && (
+              <div className={`absolute top-6 right-6 md:top-24 md:right-16 z-30 flex flex-col items-center gap-2 md:gap-3 transition-all duration-700 ${isPlaying ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                <button 
+                  onClick={() => setAutoPreviewActive(!autoPreviewActive)}
+                  className={`relative w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden shadow-2xl group/toggle ${autoPreviewActive ? 'bg-[#1ce783] text-black scale-110 ring-4 ring-[#1ce783]/20' : 'bg-black/40 backdrop-blur-xl border border-white/20 text-white hover:bg-[#1ce783] hover:text-black'}`}
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-tr from-[#1ce783] to-cyan-500 opacity-0 group-hover/toggle:opacity-100 transition-opacity ${autoPreviewActive ? 'opacity-100' : ''}`} />
+                  <div className="relative z-10">
+                    {autoPreviewActive ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8">
+                        <rect x="6" y="4" width="4" height="16" />
+                        <rect x="14" y="4" width="4" height="16" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8">
+                        <polygon points="5 3 19 12 5 21" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+                <span className={`text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] transition-opacity duration-500 ${autoPreviewActive ? 'text-[#1ce783]' : 'text-white/40'}`}>
+                  {autoPreviewActive ? 'Active' : 'Trailer'}
+                </span>
+              </div>
+            )}
+
             {/* Persistent Metadata Layer */}
-            <div className={`absolute bottom-0 left-0 p-6 md:p-16 w-full max-w-5xl z-20 transition-all duration-700 ${isPlaying ? 'pointer-events-none opacity-40 group-hover/hero:opacity-100' : 'opacity-100'}`}>
+            <div className={`absolute bottom-0 left-0 p-6 md:p-16 w-full max-w-5xl z-20 transition-all duration-700 ${isPlaying ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
               {mediaLogo && (
                 <img 
                   src={`${LOGO_URL}${mediaLogo}`} 
@@ -373,6 +378,19 @@ const Details: React.FC = () => {
                   <button onClick={() => toggleWatchlist(media)} className="flex-1 md:flex-none bg-white/10 backdrop-blur-xl text-white border border-white/20 px-4 md:px-10 py-3 md:py-4 rounded-sm font-black text-[10px] md:text-lg hover:bg-white/20 transition-all flex items-center justify-center gap-2 md:gap-3 uppercase tracking-widest whitespace-nowrap">
                     {inList ? 'Saved' : 'Add To List'}
                   </button>
+                  <a 
+                    href={`https://videodownloader.site/en/search?q=${encodeURIComponent(media.title || media.name || '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 md:flex-none bg-white/5 backdrop-blur-xl text-white border border-white/10 px-4 md:px-10 py-3 md:py-4 rounded-sm font-black text-[10px] md:text-lg hover:bg-[#1ce783] hover:text-black transition-all flex items-center justify-center gap-2 md:gap-3 uppercase tracking-widest whitespace-nowrap"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download
+                  </a>
                 </div>
               )}
             </div>
@@ -382,18 +400,36 @@ const Details: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-6 md:px-16 py-10 md:py-16">
         <div className="space-y-12 md:space-y-16">
-          <section>
-            <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-4">
-              <span className="text-[#1ce783] font-bold uppercase text-[10px] md:text-xs tracking-widest">IMDb Score ★ {media?.vote_average.toFixed(1)}</span>
-              <span className="text-gray-400 font-bold text-xs md:text-base">{releaseYear}</span>
-              <div className="flex gap-2">
-                {media?.genres?.slice(0, 3).map(g => (
-                  <span key={g.id} className="text-[#1ce783]/60 text-[9px] md:text-[10px] font-black uppercase tracking-tighter bg-white/5 px-2.5 py-1 rounded-sm">{g.name}</span>
-                ))}
+          {media && (
+            <section>
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                  <span className="text-[#1ce783] font-bold uppercase text-[10px] md:text-xs tracking-widest">IMDb Score ★ {media.vote_average.toFixed(1)}</span>
+                  <span className="text-gray-400 font-bold text-xs md:text-base">{releaseYear}</span>
+                  <div className="flex gap-2">
+                    {media.genres?.slice(0, 3).map(g => (
+                      <span key={g.id} className="text-[#1ce783]/60 text-[9px] md:text-[10px] font-black uppercase tracking-tighter bg-white/5 px-2.5 py-1 rounded-md">{g.name}</span>
+                    ))}
+                  </div>
+                </div>
+                
+                <a 
+                  href={`https://videodownloader.site/en/search?q=${encodeURIComponent(media.title || media.name || '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[#1ce783] text-black px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-white transition-all flex items-center gap-2 shadow-lg"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  Download Source
+                </a>
               </div>
-            </div>
-            <p className="text-gray-200 text-sm md:text-lg leading-relaxed max-w-5xl">{media?.overview}</p>
-          </section>
+              <p className="text-gray-200 text-sm md:text-lg leading-relaxed max-w-5xl">{media.overview}</p>
+            </section>
+          )}
 
           {isTv && media && (
             <section className="space-y-6 md:space-y-8">
@@ -449,7 +485,23 @@ const Details: React.FC = () => {
                       <div className="px-1">
                         <div className="flex items-center justify-between mb-1">
                           <h4 className="text-[12px] md:text-sm font-black text-white uppercase tracking-tight truncate flex-1 pr-4">{ep.name}</h4>
-                          <span className={`text-[10px] font-black shrink-0 ${isActive ? 'text-[#1ce783]' : 'text-gray-500'}`}>EP {ep.episode_number}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <a 
+                              href={`https://videodownloader.site/en/search?q=${encodeURIComponent(`${media.name} Season ${currentSeason} Episode ${ep.episode_number}`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1 px-2 rounded-md bg-white/10 hover:bg-[#1ce783] hover:text-black text-white/40 transition-all"
+                              title="Download Episode"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                              </svg>
+                            </a>
+                            <span className={`text-[10px] font-black ${isActive ? 'text-[#1ce783]' : 'text-gray-500'}`}>EP {ep.episode_number}</span>
+                          </div>
                         </div>
                         <p className="text-[10px] md:text-[11px] text-gray-500 line-clamp-2 leading-relaxed font-medium">{ep.overview || "No description available."}</p>
                       </div>
@@ -467,11 +519,11 @@ const Details: React.FC = () => {
             </div>
             {loadingSimilar ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (<div key={i} className="aspect-[2/3] bg-white/5 animate-pulse rounded-2xl" />))}
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (<div key={i} className="aspect-[2/3] bg-white/5 animate-pulse rounded-xl" />))}
                 </div>
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-                  {similarMedia.slice(0, 16).map((item) => (<MediaCard key={item.id} media={item} />))}
+                  {similarMedia.filter(Boolean).slice(0, 16).map((item) => (<MediaCard key={item.id} media={item} />))}
                 </div>
             )}
           </section>
