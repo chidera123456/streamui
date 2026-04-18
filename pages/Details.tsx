@@ -41,6 +41,7 @@ const Details: React.FC = () => {
     return null;
   });
   const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [episodeSearchQuery, setEpisodeSearchQuery] = useState('');
   const [currentSeason, setCurrentSeason] = useState(1);
   const [currentEpisode, setCurrentEpisode] = useState(1);
   
@@ -229,6 +230,16 @@ const Details: React.FC = () => {
     return false;
   };
 
+  const filteredEpisodes = useMemo(() => {
+    if (!episodeSearchQuery.trim()) return episodes;
+    const q = episodeSearchQuery.toLowerCase();
+    return episodes.filter(ep => 
+      ep.name.toLowerCase().includes(q) || 
+      `episode ${ep.episode_number}`.includes(q) || 
+      ep.episode_number.toString() === q
+    );
+  }, [episodes, episodeSearchQuery]);
+
   const inList = media ? isInWatchlist(media.id) : false;
   const trailer = media?.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer') || 
                   media?.videos?.results?.find(v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip'));
@@ -406,7 +417,7 @@ const Details: React.FC = () => {
 
           {isTv && media && (
             <section className="space-y-6 md:space-y-8">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/10 pb-4 gap-4">
                 <div className="flex items-center gap-4">
                   <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">Episodes</h2>
                   <div className="hidden md:flex items-center gap-2">
@@ -414,14 +425,36 @@ const Details: React.FC = () => {
                     <span className="text-[10px] font-black text-[#1ce783] uppercase tracking-widest">S{currentSeason}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 md:gap-4">
-                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Season</span>
-                  <select 
-                    value={currentSeason} onChange={(e) => changeSeason(Number(e.target.value))}
-                    className="bg-black border border-white/20 rounded px-3 md:px-4 py-1.5 text-[10px] md:text-xs font-black uppercase outline-none focus:border-[#1ce783] transition-colors cursor-pointer text-white"
-                  >
-                    {[...Array(media.number_of_seasons)].map((_, i) => (<option key={i} value={i + 1}>Season {i + 1}</option>))}
-                  </select>
+                
+                <div className="flex items-center gap-3 md:gap-6">
+                  {/* Episode Search Bar */}
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500 group-focus-within:text-[#1ce783] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input 
+                      type="text"
+                      placeholder="Search episodes..."
+                      value={episodeSearchQuery}
+                      onChange={(e) => setEpisodeSearchQuery(e.target.value)}
+                      className="bg-white/5 border border-white/10 rounded-full py-1.5 pl-9 pr-4 text-[10px] md:text-xs font-black uppercase tracking-widest text-white outline-none focus:border-[#1ce783]/50 focus:bg-white/10 transition-all w-40 md:w-64"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Season</span>
+                    <select 
+                      value={currentSeason} onChange={(e) => {
+                        changeSeason(Number(e.target.value));
+                        setEpisodeSearchQuery(''); // Reset search when changing season
+                      }}
+                      className="bg-black border border-white/20 rounded px-3 md:px-4 py-1.5 text-[10px] md:text-xs font-black uppercase outline-none focus:border-[#1ce783] transition-colors cursor-pointer text-white"
+                    >
+                      {[...Array(media.number_of_seasons)].map((_, i) => (<option key={i} value={i + 1}>Season {i + 1}</option>))}
+                    </select>
+                  </div>
                 </div>
               </div>
               
@@ -429,42 +462,49 @@ const Details: React.FC = () => {
                 ref={episodeListRef}
                 className="flex flex-nowrap overflow-x-auto gap-4 md:gap-6 pb-6 hide-scrollbar scroll-smooth snap-x snap-mandatory"
               >
-                {episodes.map((ep) => {
-                  const watched = isEpisodeWatched(ep.episode_number);
-                  const isActive = currentEpisode === ep.episode_number && isPlaying;
-                  return (
-                    <div 
-                      key={ep.id} 
-                      data-episode={ep.episode_number}
-                      onClick={() => playMedia(ep.episode_number)}
-                      className={`min-w-[260px] md:min-w-[340px] max-w-[260px] md:max-w-[340px] flex flex-col gap-3 p-3 rounded-2xl transition-all cursor-pointer group shrink-0 snap-center border-2 ${isActive ? 'bg-[#1ce783]/10 border-[#1ce783]' : 'bg-white/5 hover:bg-white/10 border-transparent hover:border-white/10'}`}
-                    >
-                      <div className="w-full aspect-video relative rounded-xl overflow-hidden bg-black/40">
-                        <img src={ep.still_path ? `${IMG_URL}${ep.still_path}` : 'https://via.placeholder.com/400x225/111/444?text=Preview'} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
-                        <div className={`absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isActive ? 'opacity-100 bg-[#1ce783]/20' : ''}`}>
-                          <div className={`p-3 rounded-full ${isActive ? 'bg-[#1ce783] text-black' : 'bg-white/20 backdrop-blur-md text-white'}`}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                {filteredEpisodes.length > 0 ? (
+                  filteredEpisodes.map((ep) => {
+                    const watched = isEpisodeWatched(ep.episode_number);
+                    const isActive = currentEpisode === ep.episode_number && isPlaying;
+                    return (
+                      <div 
+                        key={ep.id} 
+                        data-episode={ep.episode_number}
+                        onClick={() => playMedia(ep.episode_number)}
+                        className={`min-w-[260px] md:min-w-[340px] max-w-[260px] md:max-w-[340px] flex flex-col gap-3 p-3 rounded-2xl transition-all cursor-pointer group shrink-0 snap-center border-2 ${isActive ? 'bg-[#1ce783]/10 border-[#1ce783]' : 'bg-white/5 hover:bg-white/10 border-transparent hover:border-white/10'}`}
+                      >
+                        <div className="w-full aspect-video relative rounded-xl overflow-hidden bg-black/40">
+                          <img src={ep.still_path ? `${IMG_URL}${ep.still_path}` : 'https://via.placeholder.com/400x225/111/444?text=Preview'} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
+                          <div className={`absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isActive ? 'opacity-100 bg-[#1ce783]/20' : ''}`}>
+                            <div className={`p-3 rounded-full ${isActive ? 'bg-[#1ce783] text-black' : 'bg-white/20 backdrop-blur-md text-white'}`}>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            </div>
                           </div>
+                          {watched && !isActive && (
+                            <div className="absolute top-2 right-2 bg-[#1ce783] text-black p-1 rounded-full shadow-lg">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            </div>
+                          )}
+                          {isActive && (
+                            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-[#1ce783] animate-pulse"></div>
+                          )}
                         </div>
-                        {watched && !isActive && (
-                          <div className="absolute top-2 right-2 bg-[#1ce783] text-black p-1 rounded-full shadow-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3_3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        <div className="px-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-[12px] md:text-sm font-black text-white uppercase tracking-tight truncate flex-1 pr-4">{ep.name}</h4>
+                            <span className={`text-[10px] font-black ${isActive ? 'text-[#1ce783]' : 'text-gray-500'} shrink-0`}>EP {ep.episode_number}</span>
                           </div>
-                        )}
-                        {isActive && (
-                          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-[#1ce783] animate-pulse"></div>
-                        )}
-                      </div>
-                      <div className="px-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-[12px] md:text-sm font-black text-white uppercase tracking-tight truncate flex-1 pr-4">{ep.name}</h4>
-                          <span className={`text-[10px] font-black ${isActive ? 'text-[#1ce783]' : 'text-gray-500'} shrink-0`}>EP {ep.episode_number}</span>
+                          <p className="text-[10px] md:text-[11px] text-gray-500 line-clamp-2 leading-relaxed font-medium">{ep.overview || "No description available."}</p>
                         </div>
-                        <p className="text-[10px] md:text-[11px] text-gray-500 line-clamp-2 leading-relaxed font-medium">{ep.overview || "No description available."}</p>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <div className="flex flex-col items-center justify-center w-full py-12 text-center">
+                    <p className="text-gray-500 font-black uppercase text-[10px] tracking-[0.3em]">No episodes match your search</p>
+                    <button onClick={() => setEpisodeSearchQuery('')} className="mt-2 text-[#1ce783] text-[9px] font-black uppercase tracking-widest hover:underline">Clear Search</button>
+                  </div>
+                )}
                 <div className="min-w-[40px] shrink-0"></div>
               </div>
             </section>
