@@ -58,7 +58,7 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) 
       } catch (err) {
         console.error("Trailer fetch error:", err);
       }
-    }, 400);
+    }, 1000);
   };
 
   const handleMouseLeave = () => {
