@@ -1,13 +1,15 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchTrending, fetchAnime, fetchGenres, fetchNetflixContent, fetchAwardWinning, fetchComedyTV, fetchTopRatedTV, getFromCache, fetchLogos } from '../services/tmdbService';
+import { fetchTrending, fetchAnime, fetchNetflixContent, fetchAwardWinning, fetchComedyTV, fetchTopRatedTV, getFromCache, fetchLogos } from '../services/tmdbService';
 import { useHistory } from '../hooks/useHistory';
 import { Movie } from '../types';
 import { BACKDROP_URL, LOGO_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
 import FeaturedCollections from '../components/FeaturedCollections';
 import { HeroSkeleton, GridSkeleton } from '../components/Skeleton';
+import { useGenres } from '../context/GenreContext';
+import { motion, AnimatePresence } from 'motion/react';
 
 const HorizontalSection: React.FC<{ 
   title: string; 
@@ -27,7 +29,7 @@ const HorizontalSection: React.FC<{
         </div>
       </div>
       
-      <div className="flex overflow-x-auto gap-4 md:gap-6 px-6 md:px-16 pb-6 hide-scrollbar snap-x snap-mandatory">
+      <div className="flex overflow-x-auto gap-4 md:gap-6 px-6 md:px-16 pb-12 pt-10 -mt-10 hide-scrollbar snap-x snap-mandatory">
         {movies.map((item) => (
           /* Fixed width and shrink-0 ensure posters stay the same size even when others are removed */
           <div key={`${item.id}-${item.media_type}`} className="w-[120px] md:w-[160px] lg:w-[180px] shrink-0 snap-start">
@@ -84,6 +86,7 @@ const MediaSection: React.FC<{
 
 const Home: React.FC = () => {
   const { history, removeFromHistory } = useHistory();
+  const { getGenreNames } = useGenres();
   const rotationTimerRef = useRef<number | null>(null);
   
   const [trending, setTrending] = useState<Movie[]>(() => getFromCache('trending-movie-1')?.results || []);
@@ -119,7 +122,6 @@ const Home: React.FC = () => {
   const [loadingAwards, setLoadingAwards] = useState(awardWinning.length === 0);
   const [loadingComedy, setLoadingComedy] = useState(comedyTV.length === 0);
   const [loadingTopRatedTV, setLoadingTopRatedTV] = useState(topRatedTV.length === 0);
-  const [genreMap, setGenreMap] = useState<Record<number, string>>({});
 
   const heroList = useMemo(() => {
     if (trending.length === 0 && tvTrending.length === 0) return [];
@@ -155,12 +157,6 @@ const Home: React.FC = () => {
   }, [heroList, heroIndex]);
   
   useEffect(() => {
-    fetchGenres('movie').then(res => {
-      const gMap: Record<number, string> = {};
-      res.forEach(g => gMap[g.id] = g.name);
-      setGenreMap(gMap);
-    });
-
     fetchTrending('movie', 1).then(res => {
       if (res?.results && res.results.length > 0) {
         setTrending(res.results);
@@ -241,13 +237,19 @@ const Home: React.FC = () => {
       ) : hero && (
         <section className="relative h-[60vh] md:h-[80vh] w-full overflow-hidden">
           <div className="absolute inset-0">
-            <img 
-              key={hero.id}
-              src={`${BACKDROP_URL}${hero.backdrop_path}`}
-              className="w-full h-full object-cover animate-crossfade"
-              alt={hero.title || hero.name}
-              loading="eager"
-            />
+            <AnimatePresence mode="wait">
+              <motion.img 
+                key={hero.id}
+                src={`${BACKDROP_URL}${hero.backdrop_path}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1 }}
+                className="w-full h-full object-cover"
+                alt={hero.title || hero.name}
+                loading="eager"
+              />
+            </AnimatePresence>
             <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/40 to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#121212] via-transparent to-transparent" />
           </div>
@@ -276,7 +278,7 @@ const Home: React.FC = () => {
               <span className="text-[#1ce783] text-[10px] md:text-sm font-black">★ {hero.vote_average.toFixed(1)}</span>
               <div className="h-[1px] w-6 bg-white/20"></div>
               <span className="text-white/40 text-[8px] font-black uppercase tracking-widest">
-                {hero.genre_ids?.slice(0, 2).map(id => genreMap[id]).join(' • ')}
+                {getGenreNames(hero.genre_ids || []).slice(0, 2).join(' • ')}
               </span>
             </div>
             <p key={`p-${hero.id}`} className="text-gray-300 text-[9px] md:text-sm max-w-xl line-clamp-2 md:line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">

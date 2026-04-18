@@ -7,6 +7,7 @@ import AuthModal from './components/AuthModal.tsx';
 import ProfileModal from './components/ProfileModal.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
 import { DataProvider } from './context/DataContext.tsx';
+import { GenreProvider } from './context/GenreContext.tsx';
 import { HeroSkeleton } from './components/Skeleton.tsx';
 
 const Home = lazy(() => import('./pages/Home.tsx'));
@@ -25,8 +26,9 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <DataProvider>
-        <Router>
-          <div className="min-h-screen bg-[#121212] text-white flex flex-col">
+        <GenreProvider>
+          <Router>
+            <div className="min-h-screen bg-[#121212] text-white flex flex-col">
             <Navbar />
             <AuthModal />
             <ProfileModal />
@@ -61,8 +63,9 @@ const App: React.FC = () => {
             </footer>
           </div>
         </Router>
-      </DataProvider>
-    </AuthProvider>
+      </GenreProvider>
+    </DataProvider>
+  </AuthProvider>
   );
 };
 

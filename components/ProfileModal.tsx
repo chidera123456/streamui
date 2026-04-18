@@ -24,10 +24,13 @@ const ProfileModal: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      setNewUsername(user.user_metadata?.username || user.email?.split('@')[0] || '');
+    if (user && !isEditing) {
+      const defaultUsername = user.user_metadata?.username || user.email?.split('@')[0] || '';
+      if (newUsername !== defaultUsername) {
+        queueMicrotask(() => setNewUsername(defaultUsername));
+      }
     }
-  }, [user]);
+  }, [user, isEditing, newUsername]);
 
   if (!isProfileModalOpen || !user) return null;
 

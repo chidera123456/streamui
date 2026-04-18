@@ -1,27 +1,26 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchAnime, getFromCache, fetchLogos } from '../services/tmdbService';
+import { fetchAnime, fetchTrending, getFromCache, fetchLogos } from '../services/tmdbService';
 import { Movie } from '../types';
 import { BACKDROP_URL, LOGO_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
 import { GridSkeleton, HeroSkeleton } from '../components/Skeleton';
+import { motion, AnimatePresence } from 'motion/react';
+import { useGenres } from '../context/GenreContext';
 
 const Anime: React.FC = () => {
+  const { getGenreNames } = useGenres();
   const rotationTimerRef = useRef<number | null>(null);
   
   const [trending, setTrending] = useState<Movie[]>(() => getFromCache('anime-1-all')?.results || []);
+  const [tvTrending, setTvTrending] = useState<Movie[]>(() => getFromCache('trending-tv-1')?.results || []);
   const [action, setAction] = useState<Movie[]>(() => getFromCache('anime-1-10759')?.results || []);
   const [fantasy, setFantasy] = useState<Movie[]>(() => getFromCache('anime-1-10765')?.results || []);
   
-  // Initialize with a random index to satisfy "change after reloading app"
-  const [heroIndex, setHeroIndex] = useState(() => {
-    const saved = sessionStorage.getItem('zenstream-anime-hero-index');
-    if (saved !== null) return parseInt(saved, 10);
-    const index = Math.floor(Math.random() * 10);
-    sessionStorage.setItem('zenstream-anime-hero-index', index.toString());
-    return index;
-  });
+  // Initialize with a simple random starting point, don't persist in session storage
+  // as it makes the banner feel "stuck" on refresh to the user.
+  const [heroIndex, setHeroIndex] = useState(() => Math.floor(Math.random() * 10));
   const [heroLogos, setHeroLogos] = useState<Record<number, string | null>>(() => {
     const initialLogos: Record<number, string | null> = {};
     const animeCache = getFromCache('anime-1-all');
@@ -44,10 +43,13 @@ const Anime: React.FC = () => {
   const [loadingFantasy, setLoadingFantasy] = useState(fantasy.length === 0);
 
   const heroList = useMemo(() => {
-    if (trending.length === 0) return [];
-    const validHeroes = trending.filter(m => m.backdrop_path);
-    return (validHeroes.length > 0 ? validHeroes : trending).slice(0, 6);
-  }, [trending]);
+    // Combine trending anime with global trending TV shows as requested
+    const animeHeroes = trending.filter(m => m.backdrop_path).slice(0, 6);
+    const tvHeroes = tvTrending.filter(m => m.backdrop_path).slice(0, 6);
+    
+    const combined = [...animeHeroes, ...tvHeroes];
+    return combined.length > 0 ? combined : trending.slice(0, 10);
+  }, [trending, tvTrending]);
 
   const hero = useMemo(() => {
     if (heroList.length === 0) return null;
@@ -81,6 +83,18 @@ const Anime: React.FC = () => {
       }
       setLoadingFantasy(false);
     });
+
+    fetchTrending('tv', 1).then(res => {
+      if (res?.results) {
+        setTvTrending(res.results);
+        // Pre-fetch logos for TV trending items in hero
+        res.results.slice(0, 6).forEach(m => {
+          fetchLogos(m.id, 'tv').then(logo => {
+            if (logo) setHeroLogos(prev => ({ ...prev, [m.id]: logo }));
+          });
+        });
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -97,7 +111,7 @@ const Anime: React.FC = () => {
       
       rotationTimerRef.current = window.setInterval(() => {
         setHeroIndex(prev => (prev + 1));
-      }, 180000); // 3 minutes
+      }, 40000); // 40 seconds as requested
     }
     return () => {
       if (rotationTimerRef.current) clearInterval(rotationTimerRef.current);
@@ -111,17 +125,23 @@ const Anime: React.FC = () => {
         <HeroSkeleton />
       ) : hero && (
         <section className="relative h-[70vh] md:h-[90vh] w-full overflow-hidden">
-          <div className="absolute inset-0">
-            <img 
-              key={hero.id}
-              src={`${BACKDROP_URL}${hero.backdrop_path}`}
-              className="w-full h-full object-cover animate-crossfade"
-              alt={hero.name}
-              loading="eager"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/40 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#121212] via-transparent to-transparent" />
-          </div>
+            <div className="absolute inset-0">
+              <AnimatePresence mode="wait">
+                <motion.img 
+                  key={hero.id}
+                  src={`${BACKDROP_URL}${hero.backdrop_path}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 1.5 }}
+                  className="w-full h-full object-cover"
+                  alt={hero.name}
+                  loading="eager"
+                />
+              </AnimatePresence>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#121212] via-transparent to-transparent" />
+            </div>
           
           <div className="absolute bottom-0 left-0 p-6 md:p-16 max-w-4xl space-y-4 md:space-y-6 z-20">
             {heroLogos[hero.id] ? (
@@ -147,7 +167,7 @@ const Anime: React.FC = () => {
               <span className="text-[#1ce783] text-sm md:text-lg font-black">★ {hero.vote_average.toFixed(1)}</span>
               <div className="h-[1px] w-8 bg-white/20"></div>
               <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">
-                Action • Fantasy • Anime
+                {getGenreNames(hero.genre_ids || []).slice(0, 3).join(' • ')}
               </span>
             </div>
             <p key={`p-${hero.id}`} className="text-gray-300 text-[10px] md:text-base max-w-xl line-clamp-3 font-medium leading-relaxed animate-in slide-in-from-left-8 duration-1000">
@@ -155,13 +175,13 @@ const Anime: React.FC = () => {
             </p>
             <div className="flex items-center gap-4 pt-2 animate-in slide-in-from-bottom-4 duration-1000">
               <Link 
-                to={`/details/tv/${hero.id}`}
+                to={`/details/${hero.media_type || 'tv'}/${hero.id}`}
                 className="bg-[#1ce783] text-black px-8 md:px-12 py-2.5 md:py-3 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest hover:bg-white transition-all transform active:scale-95 shadow-2xl"
               >
                 Watch Now
               </Link>
               <Link 
-                to={`/details/tv/${hero.id}`}
+                to={`/details/${hero.media_type || 'tv'}/${hero.id}`}
                 className="bg-white/10 backdrop-blur-md text-white px-6 md:px-10 py-2.5 md:py-3 rounded-sm font-black text-[10px] md:text-sm uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
               >
                 Details

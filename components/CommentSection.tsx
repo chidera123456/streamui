@@ -17,7 +17,7 @@ interface ProfileData {
 
 type SortOption = 'newest' | 'top';
 
-const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "this title" }) => {
+const CommentSection: React.FC<Props> = ({ mediaId, mediaType }) => {
   const { user, openAuthModal } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileData>>({});
@@ -53,10 +53,10 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
     const storedDislikes = localStorage.getItem(`zen_dislikes_${userId}`);
     
     if (storedLikes) {
-      try { setUserLikes(new Set<string>(JSON.parse(storedLikes))); } catch (e) {}
+      try { setUserLikes(new Set<string>(JSON.parse(storedLikes))); } catch (_e) { /* ignore */ }
     }
     if (storedDislikes) {
-      try { setUserDislikes(new Set<string>(JSON.parse(storedDislikes))); } catch (e) {}
+      try { setUserDislikes(new Set<string>(JSON.parse(storedDislikes))); } catch (_e) { /* ignore */ }
     }
   }, [user]);
 
@@ -75,13 +75,13 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
     try {
       const { data } = await supabase.from('profiles').select('id, avatar_url, username').in('id', userIds);
       if (data) {
-        const profileMap = data.reduce((acc: any, p: any) => ({ 
+        const profileMap = data.reduce((acc: Record<string, ProfileData>, p: { id: string; avatar_url: string; username: string }) => ({ 
           ...acc, 
           [p.id]: { avatar_url: p.avatar_url, username: p.username } 
         }), {});
         setProfiles(prev => ({ ...prev, ...profileMap }));
       }
-    } catch (err) {}
+    } catch (_err) { /* ignore prof fetch err */ }
   };
 
   const fetchComments = useCallback(async (isInitial = false) => {
@@ -98,7 +98,7 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
       const commentsData: Comment[] = (data as Comment[]) || [];
       setComments(commentsData);
       fetchProfiles(Array.from(new Set(commentsData.map(c => c.user_id))));
-    } catch (err) {
+    } catch (_err) {
       setError("Failed to sync discussion.");
     } finally {
       if (isInitial) setLoading(false);
@@ -143,7 +143,7 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
       }
       
       fetchComments();
-    } catch (err) {
+    } catch (_err) {
       setError("Could not post your comment.");
     } finally {
       setSubmitting(false);
@@ -164,8 +164,9 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
       setComments(prev => prev.map(c => c.id === commentId ? { ...c, content: editingText } : c));
       setEditingCommentId(null);
       setEditingText('');
-    } catch (err: any) {
-      setError(err.message || "Failed to update comment.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update comment.";
+      setError(message);
     } finally {
       setSubmitting(false);
     }
@@ -220,9 +221,10 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
       if (replyToId === commentId) setReplyToId(null);
       if (editingCommentId === commentId) setEditingCommentId(null);
 
-    } catch (err: any) {
+    } catch (err) {
       console.error("Delete failure:", err);
-      setError(err.message || "Could not delete comment.");
+      const message = err instanceof Error ? err.message : "Could not delete comment.";
+      setError(message);
     } finally {
       setSubmitting(false);
     }
@@ -254,7 +256,7 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType, mediaTitle = "thi
 
     try {
       await supabase.from('comments').update({ likes: nextLikes, dislikes: nextDislikes }).eq('id', commentId);
-    } catch (err) {}
+    } catch (_err) { /* ignore interaction update err */ }
   };
 
   const getTimeAgo = (dateStr: string) => {

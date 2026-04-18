@@ -310,6 +310,22 @@ export const fetchLogos = async (id: number, type: 'movie' | 'tv'): Promise<stri
   }
 };
 
+export const fetchTrailer = async (id: number, type: 'movie' | 'tv'): Promise<string | null> => {
+  const cacheKey = `trailer-${type}-${id}`;
+  const cached = getFromCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const response = await secureFetch(`${TMDB_BASE_URL}/${type}/${id}/videos?api_key=${TMDB_API_KEY}`);
+    const data = await handleResponse(response, cacheKey);
+    const trailer = (data.results || []).find((v: any) => v.site === 'YouTube' && v.type === 'Trailer') || 
+                  (data.results || []).find((v: any) => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip'));
+    return trailer ? trailer.key : null;
+  } catch (err) {
+    return null;
+  }
+};
+
 export const getSeasonEpisodes = async (id: number, season: number): Promise<Episode[]> => {
   const cacheKey = `episodes-${id}-${season}`;
   const cached = getFromCache(cacheKey);

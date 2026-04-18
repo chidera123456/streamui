@@ -29,7 +29,7 @@ const AuthModal: React.FC = () => {
         const res = await register(formData.username, formData.email, formData.password);
         if (!res.success) setError(res.message);
       }
-    } catch (err) {
+    } catch (_err) {
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
