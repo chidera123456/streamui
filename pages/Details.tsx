@@ -15,17 +15,6 @@ declare global {
   }
 }
 
-const SERVERS = [
-  { id: 'vapi', name: 'Server 1 (Vapi)', host: 'vapi.to' },
-  { id: 'vsrcc', name: 'Server 2 (Vsrcc)', host: 'vidsrc.cc' },
-  { id: 'vsrc', name: 'Server 3 (Vsrc)', host: 'vidsrc.me' },
-  { id: 'vkng', name: 'Server 4 (Vkng)', host: 'www.2embed.cc' },
-  { id: 'xps', name: 'Server 5 (Xps)', host: 'vidsrc.xyz' },
-  { id: 'veasy', name: 'Server 6 (Veasy)', host: 'veasy.to' },
-  { id: 'mlty', name: 'Server 7 (Mlty)', host: 'multiembed.mov' },
-  { id: 'vpls', name: 'Server 8 (Vpls)', host: 'vidsrc.pro' },
-];
-
 const Details: React.FC = () => {
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
   const navigate = useNavigate();
@@ -57,12 +46,12 @@ const Details: React.FC = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [sleepTimeRemaining, setSleepTimeRemaining] = useState<number | null>(null);
   const [showTimerMenu, setShowTimerMenu] = useState(false);
-  const [currentServer] = useState(SERVERS[3]);
   
   const previewTimerRef = useRef<number | null>(null);
   const sleepIntervalRef = useRef<number | null>(null);
   const ytPlayerRef = useRef<any>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const playerIframeRef = useRef<HTMLIFrameElement>(null);
   const episodeListRef = useRef<HTMLDivElement>(null);
 
   const isTv = type?.toLowerCase() === 'tv';
@@ -249,26 +238,46 @@ const Details: React.FC = () => {
                   media?.videos?.results?.find(v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip'));
 
   const embedUrl = useMemo(() => {
-    const mediaId = media?.imdb_id || media?.external_ids?.imdb_id || id;
-    const host = (currentServer as any).host;
-    
-    if (host.includes('2embed')) {
-      if (isTv) {
-        return `https://${host}/embedtv/${mediaId}&s=${currentSeason}&e=${currentEpisode}`;
-      }
-      return `https://${host}/embed/${mediaId}`;
-    }
+    const tmdbId = id;
+    const params = "color=1db954&autoPlay=true&nextEpisode=true&episodeSelector=true";
     
     if (isTv) {
-      return `https://${host}/embed/tv/${mediaId}/${currentSeason}/${currentEpisode}`;
+      return `https://www.vidking.net/embed/tv/${tmdbId}/${currentSeason}/${currentEpisode}?${params}`;
     }
-    return `https://${host}/embed/movie/${mediaId}`;
-  }, [id, media, currentSeason, currentEpisode, isTv, currentServer]);
+    return `https://www.vidking.net/embed/movie/${tmdbId}?${params}`;
+  }, [id, currentSeason, currentEpisode, isTv]);
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
   const backgroundTrailerUrl = trailer 
     ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&enablejsapi=1&origin=${window.location.origin}`
     : '';
+
+  const handleLandscape = async () => {
+    const target = playerIframeRef.current || iframeRef.current;
+    if (!target) return;
+    
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        if (target.requestFullscreen) {
+          await target.requestFullscreen();
+        } else if ((target as any).webkitRequestFullscreen) {
+          await (target as any).webkitRequestFullscreen();
+        } else if ((target as any).msRequestFullscreen) {
+          await (target as any).msRequestFullscreen();
+        }
+
+        if (window.screen?.orientation?.lock) {
+          await (window.screen.orientation as any).lock('landscape').catch(() => {
+            console.log("Orientation lock not supported or failed");
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Landscape transition failed:", err);
+    }
+  };
 
   return (
     <div className="min-h-screen pt-0 md:pt-20 pb-20 bg-[#121212]">
@@ -282,6 +291,15 @@ const Details: React.FC = () => {
               <div className="w-full h-full group/player relative animate-in fade-in duration-500">
                 <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity duration-300">
                   <div className="flex items-center gap-2">
+                    <button 
+                      onClick={handleLandscape}
+                      className="bg-black/40 backdrop-blur-md text-white border border-white/10 hover:bg-[#1ce783] hover:text-black p-2 rounded-full md:hidden transition-all"
+                      title="Landscape Mode"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                    </button>
                     <div className="relative">
                       <button 
                         onClick={() => setShowTimerMenu(!showTimerMenu)}
@@ -320,6 +338,7 @@ const Details: React.FC = () => {
 
                 <iframe 
                   key={embedUrl}
+                  ref={playerIframeRef}
                   src={embedUrl}
                   className="w-full h-full"
                   frameBorder="0"
