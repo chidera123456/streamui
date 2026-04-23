@@ -44,11 +44,14 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) 
         if (isMobile) {
           setPreviewPosition({ v: 'down', h: 'center' });
         } else {
-          const spaceRight = screenWidth - rect.right;
+          // Boundary Logic: 
+          // If modal would exceed bottom of screen, switch to Flipped Pivot
           const spaceBottom = screenHeight - rect.bottom;
-          
-          const flipH = spaceRight < previewWidth / 2 + 20;
-          const flipV = spaceBottom < previewHeight / 2 + 20;
+          const flipV = spaceBottom < (previewHeight * 0.8);
+
+          // If modal would exceed right edge of screen, switch to Left Pivot
+          const spaceRight = screenWidth - rect.right;
+          const flipH = spaceRight < (previewWidth * 0.8);
 
           setPreviewPosition({
             v: flipV ? 'up' : 'down',
@@ -159,26 +162,25 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) 
       <AnimatePresence mode="wait">
         {showPreview && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.1, ease: "easeInOut" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.1, ease: "linear" }}
             style={{ 
-              background: 'rgba(15, 15, 15, 0.8)',
+              background: 'rgba(18, 18, 18, 0.8)',
               backdropFilter: 'blur(15px)',
               WebkitBackdropFilter: 'blur(15px)',
               border: '1px solid rgba(255, 255, 255, 0.08)'
             }}
-            className={`absolute z-[200] w-[130%] min-w-[260px] max-w-[360px] rounded-2xl shadow-[0_30px_70px_rgba(0,0,0,0.8)] overflow-hidden pointer-events-auto cursor-default ${
+            className={`absolute z-[500] w-[130%] min-w-[260px] max-w-[360px] rounded-2xl shadow-[0_30px_70px_rgba(0,0,0,0.8)] overflow-hidden pointer-events-none hover:pointer-events-auto cursor-default ${
               previewPosition.h === 'center' ? 'left-1/2 -translate-x-1/2 top-0' :
-              // Normal (Down-Right): Anchor top-left of modal to bottom-right of card center
-              (previewPosition.v === 'down' && previewPosition.h === 'right') ? 'top-1/2 left-full -translate-x-1/2' :
-              // Flip Up: Anchor bottom-left of modal to top-right of card
-              (previewPosition.v === 'up' && previewPosition.h === 'right') ? 'bottom-full left-full -translate-x-[15%] translate-y-[15%]' :
-              // Flip Left: Anchor top-right of modal to bottom-left of card
-              (previewPosition.v === 'down' && previewPosition.h === 'left') ? 'top-1/2 right-full translate-x-1/2' :
-              // Double Flip (Up-Left): 
-              'bottom-full right-full translate-x-[15%] translate-y-[15%]'
+              // Standard Vertical: Center vertically on row gutter (top 20% on top row, bottom 80% on bottom)
+              // Standard Horizontal: Center horizontally on side gutter (20% on card, 80% on right)
+              `left-full top-full ${
+                previewPosition.v === 'down' ? '-translate-y-[20%]' : '-translate-y-[80%]'
+              } ${
+                previewPosition.h === 'right' ? '-translate-x-[20%]' : '-translate-x-[80%]'
+              }`
             }`}
             onClick={(e) => e.stopPropagation()}
           >
