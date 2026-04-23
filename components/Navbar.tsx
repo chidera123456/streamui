@@ -1,17 +1,27 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import NotificationPanel from './NotificationPanel';
+import { searchMedia } from '../services/tmdbService';
+import { Movie } from '../types';
+import { IMG_URL } from '../constants';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, openAuthModal, openProfileModal } = useAuth();
   const { notifications, markNotificationsAsRead } = useData();
   const [isScrolled, setIsScrolled] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Movie[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeoutRef = useRef<number | null>(null);
   
   const isActive = (path: string) => location.pathname === path;
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
@@ -34,6 +44,7 @@ const Navbar: React.FC = () => {
     const handleClickOutside = (e: MouseEvent) => {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
         setShowNotifs(false);
+        setShowSearch(false);
       }
     };
 
@@ -44,6 +55,46 @@ const Navbar: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearch]);
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
+
+    if (searchQuery.trim().length >= 2) {
+      setIsSearching(true);
+      searchTimeoutRef.current = window.setTimeout(async () => {
+        try {
+          const res = await searchMedia(searchQuery, 'all', 1);
+          setSearchResults(res.results.slice(0, 8));
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 400);
+    } else {
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+
+    return () => {
+      if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
+    };
+  }, [searchQuery]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setShowSearch(false);
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+    }
+  };
 
   const handleToggleNotifs = () => {
     if (!showNotifs) {
@@ -96,11 +147,94 @@ const Navbar: React.FC = () => {
 
       <div className="hidden md:flex items-center gap-6">
         <div className="flex items-center gap-5 text-white mr-2">
-          <Link to="/search" className="hover:scale-110 transition-transform">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </Link>
+          {/* Inline Search Toggle */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowSearch(!showSearch)}
+              className={`hover:scale-110 transition-all transform duration-300 ${showSearch ? 'text-[#1ce783]' : 'text-white'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={showSearch ? "M6 18L18 6M6 6l12 12" : "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"} />
+              </svg>
+            </button>
+
+            {/* Search Overlay Dropdown */}
+            {showSearch && (
+              <div className="fixed inset-x-0 top-16 md:top-20 md:absolute md:top-full md:right-0 md:left-auto md:w-[450px] mt-4 bg-[#0c0c0c]/95 backdrop-blur-2xl border border-white/10 rounded-2xl md:rounded-3xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-[200] overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="p-4 md:p-6 space-y-4">
+                  <form onSubmit={handleSearchSubmit} className="relative">
+                    <input 
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Title, genre, or description..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 md:py-4 text-sm md:text-base text-white outline-none focus:border-[#1ce783]/50 focus:bg-white/10 transition-all placeholder:text-white/20"
+                    />
+                    {isSearching && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </form>
+
+                  <div className="max-h-[60vh] md:max-h-[400px] overflow-y-auto custom-scrollbar space-y-2">
+                    {searchResults.length > 0 ? (
+                      searchResults.map((movie) => (
+                        <Link
+                          key={movie.id}
+                          to={`/details/${movie.media_type}/${movie.id}`}
+                          onClick={() => {
+                            setShowSearch(false);
+                            setSearchQuery('');
+                          }}
+                          className="flex items-center gap-4 p-2 rounded-xl hover:bg-white/5 transition-all group"
+                        >
+                          <div className="w-12 h-16 rounded-lg overflow-hidden shrink-0 bg-white/5">
+                            {movie.poster_path ? (
+                              <img src={`${IMG_URL}${movie.poster_path}`} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-white/40">No Poster</div>
+                            )}
+                          </div>
+                          <div className="flex-1 overflow-hidden">
+                            <h4 className="text-sm font-bold text-white group-hover:text-[#1ce783] transition-colors truncate">
+                              {movie.title || movie.name}
+                            </h4>
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-white/40 group-hover:text-white/60 transition-colors">
+                              <span>{movie.media_type}</span>
+                              <span className="w-1 h-1 rounded-full bg-white/20" />
+                              <span>{(movie.release_date || movie.first_air_date || '').substring(0, 4)}</span>
+                              <span className="w-1 h-1 rounded-full bg-white/20" />
+                              <span className="text-[#1ce783]">★ {movie.vote_average.toFixed(1)}</span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    ) : searchQuery.length >= 2 && !isSearching ? (
+                      <div className="py-12 text-center">
+                        <p className="text-white/20 text-xs font-black uppercase tracking-widest italic">No matches found</p>
+                      </div>
+                    ) : (
+                      <div className="py-12 text-center opacity-40">
+                         <p className="text-white/20 text-xs font-black uppercase tracking-widest italic">Search for movies, tv shows, or anime</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {searchResults.length > 0 && (
+                    <Link
+                      to="/search"
+                      onClick={() => setShowSearch(false)}
+                      className="block w-full py-3 text-center bg-[#1ce783]/10 hover:bg-[#1ce783] text-[#1ce783] hover:text-black rounded-xl text-[10px] font-black uppercase tracking-widest transition-all mt-4 border border-[#1ce783]/20"
+                    >
+                      Advanced Discovery View
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           <a 
             href="https://discord.gg/7N6ghMTSFj" 

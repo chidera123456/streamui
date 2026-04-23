@@ -1,12 +1,63 @@
 
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { searchMedia } from '../services/tmdbService';
+import { Movie } from '../types';
+import { IMG_URL } from '../constants';
 
 const MobileNav: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, openAuthModal, openProfileModal } = useAuth();
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Movie[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeoutRef = useRef<number | null>(null);
+
   const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearch]);
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
+
+    if (searchQuery.trim().length >= 2) {
+      setIsSearching(true);
+      searchTimeoutRef.current = window.setTimeout(async () => {
+        try {
+          const res = await searchMedia(searchQuery, 'all', 1);
+          setSearchResults(res.results.slice(0, 10));
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 400);
+    } else {
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+
+    return () => {
+      if (searchTimeoutRef.current) window.clearTimeout(searchTimeoutRef.current);
+    };
+  }, [searchQuery]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setShowSearch(false);
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+    }
+  };
 
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'U';
   const initial = String(username).charAt(0).toUpperCase();
@@ -55,19 +106,103 @@ const MobileNav: React.FC = () => {
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#121212]/95 backdrop-blur-2xl border-t border-white/5 z-50 flex items-center justify-around px-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
-      {links.map((link) => (
-        <React.Fragment key={link.path}>
-          <Link 
-            to={link.path} 
-            className={`flex flex-col items-center justify-center gap-1 transition-all duration-150 transform-gpu w-16 active:scale-90 ${isActive(link.path) ? 'text-[#1ce783]' : 'text-gray-500'}`}
-          >
-            <div className={`p-1.5 rounded-xl transition-colors ${isActive(link.path) ? 'bg-[#1ce783]/10' : ''}`}>
-              {link.icon}
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-tighter">{link.label}</span>
-          </Link>
-          {link.path === '/search' && (
+    <>
+      {/* Mobile Search Overlay */}
+      {showSearch && (
+        <div className="fixed inset-0 bg-[#0c0c0c] z-[60] flex flex-col pt-safe animate-in fade-in duration-300">
+          <div className="p-4 flex items-center gap-3 border-b border-white/5">
+            <button 
+              onClick={() => setShowSearch(false)}
+              className="p-2 text-gray-400 hover:text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+              <input 
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search Zenith..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-full px-5 py-2.5 text-sm md:text-base text-white outline-none focus:border-[#1ce783]/50 transition-all"
+              />
+              {isSearching && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <div className="w-3 h-3 border-2 border-[#1ce783] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+            </form>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+            {searchResults.length > 0 ? (
+              searchResults.map((movie) => (
+                <Link
+                  key={movie.id}
+                  to={`/details/${movie.media_type}/${movie.id}`}
+                  onClick={() => {
+                    setShowSearch(false);
+                    setSearchQuery('');
+                  }}
+                  className="flex items-center gap-4 p-2 rounded-2xl hover:bg-white/5 transition-all active:scale-[0.98] transform-gpu border border-transparent hover:border-white/5"
+                >
+                  <div className="w-14 h-20 rounded-xl overflow-hidden shrink-0 bg-white/5 shadow-lg">
+                    {movie.poster_path ? (
+                      <img src={`${IMG_URL}${movie.poster_path}`} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-white/20 uppercase">No Art</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-black text-white mb-1 truncate tracking-tight">{movie.title || movie.name}</h4>
+                    <div className="flex items-center gap-2 text-[9px] font-black uppercase text-white/40">
+                      <span className="text-[#1ce783]">{movie.media_type}</span>
+                      <span>{(movie.release_date || movie.first_air_date || '').substring(0, 4)}</span>
+                      <span className="text-white/60">★ {movie.vote_average.toFixed(1)}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : searchQuery.length >= 2 && !isSearching ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+                <p className="text-sm font-black uppercase tracking-widest italic">No matches found</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center opacity-20">
+                <p className="max-w-[200px] text-[10px] font-black uppercase tracking-widest leading-relaxed">Type to explore our high-speed content streams</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#121212]/95 backdrop-blur-2xl border-t border-white/5 z-50 flex items-center justify-around px-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
+        {links.map((link) => (
+          <React.Fragment key={link.path}>
+            {link.path === '/search' ? (
+              <button 
+                onClick={() => setShowSearch(true)}
+                className={`flex flex-col items-center justify-center gap-1 transition-all duration-150 transform-gpu w-16 active:scale-90 ${showSearch ? 'text-[#1ce783]' : 'text-gray-500'}`}
+              >
+                <div className={`p-1.5 rounded-xl transition-colors ${showSearch ? 'bg-[#1ce783]/10' : ''}`}>
+                  {link.icon}
+                </div>
+                <span className="text-[9px] font-black uppercase tracking-tighter">{link.label}</span>
+              </button>
+            ) : (
+              <Link 
+                to={link.path} 
+                className={`flex flex-col items-center justify-center gap-1 transition-all duration-150 transform-gpu w-16 active:scale-90 ${isActive(link.path) ? 'text-[#1ce783]' : 'text-gray-500'}`}
+              >
+                <div className={`p-1.5 rounded-xl transition-colors ${isActive(link.path) ? 'bg-[#1ce783]/10' : ''}`}>
+                  {link.icon}
+                </div>
+                <span className="text-[9px] font-black uppercase tracking-tighter">{link.label}</span>
+              </Link>
+            )}
+            {link.path === '/search' && (
             <a 
               href="https://discord.gg/7N6ghMTSFj"
               target="_blank"
@@ -108,6 +243,7 @@ const MobileNav: React.FC = () => {
         </span>
       </button>
     </div>
+    </>
   );
 };
 

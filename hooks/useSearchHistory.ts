@@ -55,7 +55,7 @@ export const useSearchHistory = () => {
     fetchHistory();
   }, [fetchHistory]);
 
-  const saveToHistory = async (query: string) => {
+  const saveToHistory = useCallback(async (query: string) => {
     const trimmed = query.trim();
     if (!trimmed || trimmed.length < 2) return;
 
@@ -83,9 +83,9 @@ export const useSearchHistory = () => {
         console.error("Critical failure syncing search to cloud:", err);
       }
     }
-  };
+  }, [user]);
 
-  const removeFromHistory = async (query: string) => {
+  const removeFromHistory = useCallback(async (query: string) => {
     setSearchHistory(prev => {
       const updated = prev.filter(h => h !== query);
       if (!user) localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -105,9 +105,9 @@ export const useSearchHistory = () => {
         console.error("Failed to remove search from cloud", err);
       }
     }
-  };
+  }, [user]);
 
-  const clearHistory = async () => {
+  const clearHistory = useCallback(async () => {
     setSearchHistory([]);
     if (!user) {
       localStorage.removeItem(STORAGE_KEY);
@@ -123,7 +123,7 @@ export const useSearchHistory = () => {
         console.error("Failed to clear cloud history", err);
       }
     }
-  };
+  }, [user]);
 
   return { searchHistory, saveToHistory, removeFromHistory, clearHistory, loading, refresh: fetchHistory };
 };

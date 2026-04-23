@@ -1,15 +1,18 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { searchMedia, discoverMedia, fetchGenres } from '../services/tmdbService';
 import { getCorrectedQuery } from '../services/geminiService';
 import { Movie } from '../types';
 import MediaCard from '../components/MediaCard';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { IMG_URL } from '../constants';
 import { useSearchHistory } from '../hooks/useSearchHistory';
 
 const Search: React.FC = () => {
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  
+  const [query, setQuery] = useState(initialQuery);
   const [correctedQuery, setCorrectedQuery] = useState<string | null>(null);
   const [type, setType] = useState<'all' | 'movie' | 'tv'>('all');
   const [results, setResults] = useState<Movie[]>([]);
@@ -30,10 +33,116 @@ const Search: React.FC = () => {
   
   const searchTimeout = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastRequestQuery = useRef<string>('');
+  const isSumbittedSearch = useRef<boolean>(false);
+
+  // Maintain latest values to keep triggerSearch stable
+  const stateRef = useRef({ query, type, selectedGenre, selectedYear, minRating, showDropdown });
+  useEffect(() => {
+    stateRef.current = { query, type, selectedGenre, selectedYear, minRating, showDropdown };
+  }, [query, type, selectedGenre, selectedYear, minRating, showDropdown]);
+
+  const triggerSearch = useCallback(async (pageNum: number = 1, isLoadMore: boolean = false, isSilent: boolean = false, searchQuery?: string) => {
+    const { query: sQuery, type: sType, selectedGenre: sGenre, selectedYear: sYear, minRating: sRating } = stateRef.current;
+    const finalQuery = searchQuery !== undefined ? searchQuery : sQuery;
+
+    if (!isLoadMore && !isSilent) {
+      setLoading(true);
+      setShowDropdown(false);
+      setSuggestions([]); // Clear suggestions on full search
+      isSumbittedSearch.current = true;
+      if (pageNum === 1) {
+        setResults([]);
+        setCorrectedQuery(null);
+      }
+    } else if (isLoadMore) {
+      setLoadingMore(true);
+    }
+
+    lastRequestQuery.current = finalQuery;
+
+    try {
+      let res;
+      if (finalQuery.trim()) {
+        res = await searchMedia(finalQuery, sType, pageNum, sYear);
+        
+        // If results came back for a different query than what's currently being requested, ignore
+        if (finalQuery !== lastRequestQuery.current && isSilent) return;
+
+        if (!isSilent && pageNum === 1) {
+          // AUTO-CORRECTION LOGIC
+          if (res.results.length === 0 && finalQuery.length > 2) {
+            setIsCorrecting(true);
+            const aiCorrected = await getCorrectedQuery(finalQuery);
+            setIsCorrecting(false);
+            
+            if (aiCorrected) {
+              setCorrectedQuery(aiCorrected);
+              const correctedRes = await searchMedia(aiCorrected, sType, 1, sYear);
+              res = correctedRes;
+              saveToHistory(aiCorrected);
+            } else {
+              saveToHistory(finalQuery);
+            }
+          } else if (res.results.length > 0) {
+            saveToHistory(finalQuery);
+          }
+        }
+      } else if (sGenre || sYear || sRating > 0) {
+        if (sType === 'all') {
+          const [movieRes, tvRes] = await Promise.all([
+            discoverMedia('movie', pageNum, { genre: sGenre || undefined, year: sYear || undefined, rating: sRating || undefined }),
+            discoverMedia('tv', pageNum, { genre: sGenre || undefined, year: sYear || undefined, rating: sRating || undefined })
+          ]);
+          
+          res = {
+            results: [...movieRes.results, ...tvRes.results].sort((a, b) => (b.popularity || 0) - (a.popularity || 0)),
+            totalPages: Math.max(movieRes.totalPages, tvRes.totalPages)
+          };
+        } else {
+          res = await discoverMedia(sType, pageNum, { 
+            genre: sGenre || undefined, 
+            year: sYear || undefined, 
+            rating: sRating || undefined 
+          });
+        }
+      } else {
+        res = { results: [], totalPages: 0 };
+      }
+
+      if (isSilent) {
+        // Only update suggestions if query is still relevant
+        if (finalQuery.trim().length >= 2) {
+          setSuggestions(res.results.slice(0, 5));
+        }
+      } else {
+        if (isLoadMore) {
+          setResults(prev => [...prev, ...res.results]);
+        } else {
+          setResults(res.results);
+          setShowDropdown(false); 
+          setSuggestions([]); // Final safety clear
+        }
+        setPage(pageNum);
+        setHasMore(res.totalPages > pageNum);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      if (!isLoadMore) setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [saveToHistory]); // Now stable since saveToHistory is memoized
+
+  useEffect(() => {
+    if (initialQuery) {
+      setQuery(initialQuery);
+      triggerSearch(1, false, false, initialQuery);
+    }
+  }, [initialQuery, triggerSearch]);
 
   useEffect(() => {
     const loadGenres = async () => {
-      // Fetch movie genres by default for 'all' to show a comprehensive list
       const fetchType = type === 'all' ? 'movie' : type;
       const data = await fetchGenres(fetchType);
       setGenres(data);
@@ -51,11 +160,18 @@ const Search: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Suggestions logic - only depends on query
   useEffect(() => {
     if (searchTimeout.current) window.clearTimeout(searchTimeout.current);
 
     if (query.trim().length >= 2) {
-      setShowDropdown(true);
+      if (query !== lastRequestQuery.current) {
+        isSumbittedSearch.current = false;
+        setShowDropdown(true);
+      } else if (!isSumbittedSearch.current) {
+        setShowDropdown(true);
+      }
+
       searchTimeout.current = window.setTimeout(() => {
         triggerSearch(1, false, true); 
       }, 400);
@@ -64,108 +180,42 @@ const Search: React.FC = () => {
       if (query.trim().length === 0 && !selectedGenre && !selectedYear && minRating === 0) {
         setResults([]);
         setCorrectedQuery(null);
+        isSumbittedSearch.current = false;
+        setShowDropdown(false);
       }
     }
 
     return () => {
       if (searchTimeout.current) window.clearTimeout(searchTimeout.current);
     };
-  }, [query, type]);
+  }, [query, selectedGenre, selectedYear, minRating, triggerSearch]);
 
-  // Auto-trigger search when genre changes
+  // Filter trigger - separate to avoid logic mixing
+  useEffect(() => {
+    if (selectedGenre || selectedYear || minRating > 0) {
+      triggerSearch(1);
+    }
+  }, [selectedGenre, selectedYear, minRating, triggerSearch]);
+
+  // Auto-genre trigger fix
   useEffect(() => {
     if (selectedGenre) {
-      setQuery(''); // Clear text search to prioritize genre discovery
-      triggerSearch(1, false, false, '');
+      setQuery('');
     }
   }, [selectedGenre]);
 
-  const triggerSearch = async (pageNum: number = 1, isLoadMore: boolean = false, isSilent: boolean = false, searchQuery: string = query) => {
-    if (!isLoadMore && !isSilent) {
-      setLoading(true);
-      if (pageNum === 1) {
-        setResults([]);
-        setCorrectedQuery(null);
-      }
-    } else if (isLoadMore) {
-      setLoadingMore(true);
-    }
-
-    try {
-      let res;
-      if (searchQuery.trim()) {
-        res = await searchMedia(searchQuery, type, pageNum, selectedYear);
-        
-        if (!isSilent && pageNum === 1) {
-          // AUTO-CORRECTION LOGIC
-          if (res.results.length === 0 && searchQuery.length > 2) {
-            setIsCorrecting(true);
-            const aiCorrected = await getCorrectedQuery(searchQuery);
-            setIsCorrecting(false);
-            
-            if (aiCorrected) {
-              setCorrectedQuery(aiCorrected);
-              const correctedRes = await searchMedia(aiCorrected, type, 1, selectedYear);
-              res = correctedRes;
-              saveToHistory(aiCorrected);
-            } else {
-              saveToHistory(searchQuery);
-            }
-          } else if (res.results.length > 0) {
-            saveToHistory(searchQuery);
-          }
-        }
-      } else if (selectedGenre || selectedYear || minRating > 0) {
-        if (type === 'all') {
-          // Fetch both and merge shuffles by popularity
-          const [movieRes, tvRes] = await Promise.all([
-            discoverMedia('movie', pageNum, { genre: selectedGenre || undefined, year: selectedYear || undefined, rating: minRating || undefined }),
-            discoverMedia('tv', pageNum, { genre: selectedGenre || undefined, year: selectedYear || undefined, rating: minRating || undefined })
-          ]);
-          
-          res = {
-            results: [...movieRes.results, ...tvRes.results].sort((a, b) => (b.popularity || 0) - (a.popularity || 0)),
-            totalPages: Math.max(movieRes.totalPages, tvRes.totalPages)
-          };
-        } else {
-          res = await discoverMedia(type, pageNum, { 
-            genre: selectedGenre || undefined, 
-            year: selectedYear || undefined, 
-            rating: minRating || undefined 
-          });
-        }
-      } else {
-        res = { results: [], totalPages: 0 };
-      }
-
-      if (isSilent) {
-        setSuggestions(res.results.slice(0, 5));
-      } else {
-        if (isLoadMore) {
-          setResults(prev => [...prev, ...res.results]);
-        } else {
-          setResults(res.results);
-          setShowDropdown(false); 
-        }
-        setPage(pageNum);
-        setHasMore(res.totalPages > pageNum);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (searchTimeout.current) window.clearTimeout(searchTimeout.current);
+    setShowDropdown(false);
+    setSuggestions([]);
     triggerSearch(1);
   };
 
   const handleHistoryClick = (h: string) => {
     setQuery(h);
     setShowDropdown(false);
+    isSumbittedSearch.current = true;
     triggerSearch(1, false, false, h);
   };
 
@@ -232,7 +282,11 @@ const Search: React.FC = () => {
               <input
                 type="text"
                 value={query}
-                onFocus={() => setShowDropdown(true)}
+                onFocus={() => {
+                  if (!isSumbittedSearch.current || (query.length > 0 && query !== lastRequestQuery.current)) {
+                    setShowDropdown(true);
+                  }
+                }}
                 onChange={(e) => {
                   setQuery(e.target.value);
                   if (e.target.value.trim()) setSelectedGenre(null); // Clear genre if typing
@@ -241,7 +295,7 @@ const Search: React.FC = () => {
                 className="w-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-6 py-3 md:py-5 text-lg md:text-xl outline-none focus:border-[#1ce783]/50 focus:bg-white/10 transition-all shadow-2xl placeholder:opacity-30"
               />
               
-              {showDropdown && (suggestions.length > 0 || (query.trim() === '' && searchHistory.length > 0)) && (
+              {showDropdown && !loading && !isCorrecting && (suggestions.length > 0 || (query.trim() === '' && searchHistory.length > 0)) && (
                 <div className="absolute top-full left-0 right-0 mt-3 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   
                   {query.trim() === '' && searchHistory.length > 0 && (
@@ -295,7 +349,11 @@ const Search: React.FC = () => {
                         <Link
                           key={s.id}
                           to={`/details/${s.media_type}/${s.id}`}
-                          onClick={() => saveToHistory(query)}
+                          onClick={() => {
+                            saveToHistory(query);
+                            setShowDropdown(false);
+                            isSumbittedSearch.current = true;
+                          }}
                           className="flex items-center gap-4 p-3 hover:bg-white/5 transition-colors group"
                         >
                           <div className="w-10 h-14 bg-white/5 rounded-sm overflow-hidden shrink-0">

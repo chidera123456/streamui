@@ -16,14 +16,14 @@ declare global {
 }
 
 const SERVERS = [
-  { id: 'vapi', name: 'Server 1 (Vapi)' },
-  { id: 'vsrcc', name: 'Server 2 (Vsrcc)' },
-  { id: 'vsrc', name: 'Server 3 (Vsrc)' },
-  { id: 'vkng', name: 'Server 4 (Vkng)' },
-  { id: 'xps', name: 'Server 5 (Xps)' },
-  { id: 'veasy', name: 'Server 6 (Veasy)' },
-  { id: 'mlty', name: 'Server 7 (Mlty)' },
-  { id: 'vpls', name: 'Server 8 (Vpls)' },
+  { id: 'vapi', name: 'Server 1 (Vapi)', host: 'vapi.to' },
+  { id: 'vsrcc', name: 'Server 2 (Vsrcc)', host: 'vidsrc.cc' },
+  { id: 'vsrc', name: 'Server 3 (Vsrc)', host: 'vidsrc.me' },
+  { id: 'vkng', name: 'Server 4 (Vkng)', host: 'www.2embed.cc' },
+  { id: 'xps', name: 'Server 5 (Xps)', host: 'vidsrc.xyz' },
+  { id: 'veasy', name: 'Server 6 (Veasy)', host: 'veasy.to' },
+  { id: 'mlty', name: 'Server 7 (Mlty)', host: 'multiembed.mov' },
+  { id: 'vpls', name: 'Server 8 (Vpls)', host: 'vidsrc.pro' },
 ];
 
 const Details: React.FC = () => {
@@ -57,7 +57,7 @@ const Details: React.FC = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [sleepTimeRemaining, setSleepTimeRemaining] = useState<number | null>(null);
   const [showTimerMenu, setShowTimerMenu] = useState(false);
-  const [currentServer, setCurrentServer] = useState(SERVERS[0]);
+  const [currentServer] = useState(SERVERS[3]);
   
   const previewTimerRef = useRef<number | null>(null);
   const sleepIntervalRef = useRef<number | null>(null);
@@ -250,11 +250,20 @@ const Details: React.FC = () => {
 
   const embedUrl = useMemo(() => {
     const mediaId = media?.imdb_id || media?.external_ids?.imdb_id || id;
-    if (isTv) {
-      return `https://www.2embed.cc/embedtv/${mediaId}&s=${currentSeason}&e=${currentEpisode}`;
+    const host = (currentServer as any).host;
+    
+    if (host.includes('2embed')) {
+      if (isTv) {
+        return `https://${host}/embedtv/${mediaId}&s=${currentSeason}&e=${currentEpisode}`;
+      }
+      return `https://${host}/embed/${mediaId}`;
     }
-    return `https://www.2embed.cc/embed/${mediaId}`;
-  }, [id, media, currentSeason, currentEpisode, isTv]);
+    
+    if (isTv) {
+      return `https://${host}/embed/tv/${mediaId}/${currentSeason}/${currentEpisode}`;
+    }
+    return `https://${host}/embed/movie/${mediaId}`;
+  }, [id, media, currentSeason, currentEpisode, isTv, currentServer]);
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
   const backgroundTrailerUrl = trailer 
@@ -273,17 +282,6 @@ const Details: React.FC = () => {
               <div className="w-full h-full group/player relative animate-in fade-in duration-500">
                 <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity duration-300">
                   <div className="flex items-center gap-2">
-                    <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl max-w-[200px] md:max-w-none">
-                      {SERVERS.map((srv) => (
-                        <button 
-                          key={srv.id}
-                          onClick={() => setCurrentServer(srv)}
-                          className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${currentServer.id === srv.id ? 'bg-[#1ce783] text-black shadow-lg shadow-[#1ce783]/20' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
-                        >
-                          {srv.name.split(' ')[2].replace('(', '').replace(')', '')}
-                        </button>
-                      ))}
-                    </div>
                     <div className="relative">
                       <button 
                         onClick={() => setShowTimerMenu(!showTimerMenu)}
