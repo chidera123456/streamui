@@ -12,7 +12,7 @@ window.onerror = function(message, source, lineno, colno, error) {
 // PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
+    navigator.serviceWorker.register('/sw.js')
       .then(reg => console.log('ZenStream: SW Registered', reg.scope))
       .catch(err => console.log('ZenStream: SW Failed', err));
   });

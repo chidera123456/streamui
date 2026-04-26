@@ -28,7 +28,7 @@ const App: React.FC = () => {
       <DataProvider>
         <GenreProvider>
           <Router>
-            <div className="min-h-screen bg-[#121212] text-white flex flex-col">
+            <div className="min-h-screen bg-black text-white flex flex-col">
             <Navbar />
             <AuthModal />
             <ProfileModal />

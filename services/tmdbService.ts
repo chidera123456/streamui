@@ -318,9 +318,21 @@ export const fetchTrailer = async (id: number, type: 'movie' | 'tv'): Promise<st
   try {
     const response = await secureFetch(`${TMDB_BASE_URL}/${type}/${id}/videos?api_key=${TMDB_API_KEY}`);
     const data = await handleResponse(response, cacheKey);
-    const trailer = (data.results || []).find((v: any) => v.site === 'YouTube' && v.type === 'Trailer') || 
-                  (data.results || []).find((v: any) => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip'));
-    return trailer ? trailer.key : null;
+    const results = data.results || [];
+    
+    const priorities = ['Trailer', 'Teaser', 'Clip', 'Opening Credits', 'Featurette', 'Behind the Scenes'];
+    let selected = null;
+    
+    for (const p of priorities) {
+      selected = results.find((v: any) => v.site === 'YouTube' && v.type === p);
+      if (selected) break;
+    }
+    
+    if (!selected) {
+      selected = results.find((v: any) => v.site === 'YouTube');
+    }
+
+    return selected ? selected.key : null;
   } catch (err) {
     return null;
   }

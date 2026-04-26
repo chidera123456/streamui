@@ -234,8 +234,22 @@ const Details: React.FC = () => {
   }, [episodes, episodeSearchQuery]);
 
   const inList = media ? isInWatchlist(media.id) : false;
-  const trailer = media?.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer') || 
-                  media?.videos?.results?.find(v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip'));
+  
+  const trailer = useMemo(() => {
+    if (!media?.videos?.results) return null;
+    const videos = media.videos.results;
+    
+    // Priority order for video types
+    const priorities = ['Trailer', 'Teaser', 'Clip', 'Opening Credits', 'Featurette', 'Behind the Scenes'];
+    
+    for (const type of priorities) {
+      const video = videos.find(v => v.site === 'YouTube' && v.type === type);
+      if (video) return video;
+    }
+    
+    // Fallback to any YouTube video if none of the above matches
+    return videos.find(v => v.site === 'YouTube') || null;
+  }, [media]);
 
   const embedUrl = useMemo(() => {
     const tmdbId = id;
@@ -248,9 +262,23 @@ const Details: React.FC = () => {
   }, [id, currentSeason, currentEpisode, isTv]);
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
-  const backgroundTrailerUrl = trailer 
-    ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=0&controls=0&modestbranding=1&rel=0&iv_load_policy=3&enablejsapi=1&origin=${window.location.origin}`
-    : '';
+  const backgroundTrailerUrl = useMemo(() => {
+    if (!trailer) return '';
+    const baseUrl = `https://www.youtube.com/embed/${trailer.key}`;
+    const params = [
+      'autoplay=1',
+      'mute=1', // Always mute background previews for better UX
+      'controls=0',
+      'modestbranding=1',
+      'rel=0',
+      'iv_load_policy=3',
+      'enablejsapi=1',
+      `origin=${window.location.origin}`,
+      'loop=1',
+      `playlist=${trailer.key}` // Required for loop feature
+    ].join('&');
+    return `${baseUrl}?${params}`;
+  }, [trailer]);
 
   const handleLandscape = async () => {
     const target = playerIframeRef.current || iframeRef.current;
