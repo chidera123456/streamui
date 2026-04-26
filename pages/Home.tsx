@@ -235,7 +235,7 @@ const Home: React.FC = () => {
       {!hero && (loadingTrending) ? (
         <HeroSkeleton />
       ) : hero && (
-        <section className="relative h-[60vh] md:h-[80vh] w-full overflow-hidden movie-banner">
+        <section className="relative h-[60vh] md:h-[80vh] w-full overflow-hidden">
           <div className="absolute inset-0">
             <AnimatePresence mode="wait">
               <motion.img 
