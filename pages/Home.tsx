@@ -29,7 +29,7 @@ const HorizontalSection: React.FC<{
         </div>
       </div>
       
-      <div className="flex overflow-x-auto gap-4 md:gap-6 px-6 md:px-16 pb-12 pt-10 -mt-10 hide-scrollbar snap-x snap-mandatory">
+      <div className="flex overflow-x-auto overflow-y-visible gap-4 md:gap-6 px-6 md:px-16 pb-12 pt-10 -mt-10 hide-scrollbar snap-x snap-mandatory relative z-30">
         {movies.map((item) => (
           /* Fixed width and shrink-0 ensure posters stay the same size even when others are removed */
           <div key={`${item.id}-${item.media_type}`} className="w-[120px] md:w-[160px] lg:w-[180px] shrink-0 snap-start">

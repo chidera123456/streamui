@@ -269,8 +269,9 @@ const Details: React.FC = () => {
     const baseUrl = `https://www.youtube.com/embed/${trailer.key}`;
     const params = [
       'autoplay=1',
-      'mute=1', // Always mute background previews for better UX
+      'mute=0', 
       'controls=0',
+      'showinfo=0',
       'modestbranding=1',
       'rel=0',
       'iv_load_policy=3',
@@ -387,7 +388,7 @@ const Details: React.FC = () => {
                     <iframe 
                       ref={iframeRef}
                       src={backgroundTrailerUrl}
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full scale-125 md:scale-105 pointer-events-none"
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-video h-full scale-[1.4] pointer-events-none"
                       frameBorder="0" allow="autoplay; encrypted-media" title="Cinematic Preview"
                     />
                   </div>
