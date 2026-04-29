@@ -29,8 +29,9 @@ const AuthModal: React.FC = () => {
         const res = await register(formData.username, formData.email, formData.password);
         if (!res.success) setError(res.message);
       }
-    } catch (_err) {
+    } catch (err) {
       setError("An unexpected error occurred. Please try again.");
+      console.error("Auth submit error:", err);
     } finally {
       setLoading(false);
     }

@@ -9,7 +9,7 @@ const saveToLocalStorage = (key: string, data: any) => {
   try {
     const serialized = JSON.stringify({ data, timestamp: Date.now() });
     localStorage.setItem(`${CACHE_KEY_PREFIX}${key}`, serialized);
-  } catch (err) {
+  } catch {
     // Falls back to memory-only if storage is full or unavailable
   }
 };
@@ -23,7 +23,7 @@ export const getFromCache = (key: string) => {
       return data;
     }
     localStorage.removeItem(`${CACHE_KEY_PREFIX}${key}`);
-  } catch (err) {
+  } catch {
     return null;
   }
   return null;
@@ -72,7 +72,7 @@ export const fetchNowPlaying = async (): Promise<Movie[]> => {
     const response = await secureFetch(`${TMDB_BASE_URL}/movie/now_playing?api_key=${TMDB_API_KEY}&region=US`);
     const data = await handleResponse(response, cacheKey);
     return (data.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
-  } catch (err) {
+  } catch {
     return [];
   }
 };

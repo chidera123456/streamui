@@ -11,7 +11,9 @@ import MediaCard from '../components/MediaCard';
 declare global {
   interface Window {
     onYouTubeIframeAPIReady: () => void;
-    YT: any;
+    YT: {
+      Player: new (element: HTMLIFrameElement | string, options: any) => any;
+    };
   }
 }
 

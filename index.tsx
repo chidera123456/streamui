@@ -1,7 +1,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.tsx';
+import App from './App';
 
 // Global error handling for debugging deployment issues
 window.onerror = function(message, source, lineno, colno, error) {
@@ -9,7 +9,8 @@ window.onerror = function(message, source, lineno, colno, error) {
   return false;
 };
 
-// PWA Service Worker Registration
+// PWA Service Worker Registration - Disabled to prevent development caching issues
+/*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
@@ -17,6 +18,7 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.log('ZenStream: SW Failed', err));
   });
 }
+*/
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -25,7 +27,5 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
+  <App />
 );

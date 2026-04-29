@@ -242,7 +242,7 @@ const Search: React.FC = () => {
         <div className="absolute top-0 left-0 right-0 h-[60vh] bg-gradient-to-b from-[#1ce783]/8 to-transparent" />
       </div>
 
-      <div className="relative z-10 pt-12 md:pt-32 pb-20 px-4 md:px-12 max-w-7xl mx-auto">
+      <div className="relative z-10 pt-0 md:pt-32 pb-20 px-4 md:px-12 max-w-7xl mx-auto">
         <div className="mb-8 md:mb-12 text-center">
         <h1 className="text-lg md:text-xl font-bold uppercase tracking-[0.3em] text-[#1ce783] mb-2">
           Discovery

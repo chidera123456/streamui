@@ -41,7 +41,7 @@ const AISuggest: React.FC = () => {
   };
 
   return (
-    <div className="pt-8 md:pt-4 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
+    <div className="pt-0 md:pt-4 pb-20 px-4 md:px-12 max-w-7xl mx-auto min-h-screen">
       <div className="mb-12 text-center max-w-3xl mx-auto">
         <h1 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter mb-4 zen-gradient-text">
           AI DISCOVERY

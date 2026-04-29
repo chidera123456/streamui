@@ -53,10 +53,18 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType }) => {
     const storedDislikes = localStorage.getItem(`zen_dislikes_${userId}`);
     
     if (storedLikes) {
-      try { setUserLikes(new Set<string>(JSON.parse(storedLikes))); } catch (_e) { /* ignore */ }
+      try {
+        setUserLikes(new Set<string>(JSON.parse(storedLikes)));
+      } catch (err) {
+        console.error("Failed to parse likes", err);
+      }
     }
     if (storedDislikes) {
-      try { setUserDislikes(new Set<string>(JSON.parse(storedDislikes))); } catch (_e) { /* ignore */ }
+      try {
+        setUserDislikes(new Set<string>(JSON.parse(storedDislikes)));
+      } catch (err) {
+        console.error("Failed to parse dislikes", err);
+      }
     }
   }, [user]);
 
@@ -81,7 +89,9 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType }) => {
         }), {});
         setProfiles(prev => ({ ...prev, ...profileMap }));
       }
-    } catch (_err) { /* ignore prof fetch err */ }
+    } catch (err) {
+      console.error("Profile fetch error:", err);
+    }
   };
 
   const fetchComments = useCallback(async (isInitial = false) => {
@@ -98,7 +108,8 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType }) => {
       const commentsData: Comment[] = (data as Comment[]) || [];
       setComments(commentsData);
       fetchProfiles(Array.from(new Set(commentsData.map(c => c.user_id))));
-    } catch (_err) {
+    } catch (err) {
+      console.error("Discussion sync failed:", err);
       setError("Failed to sync discussion.");
     } finally {
       if (isInitial) setLoading(false);
@@ -143,7 +154,8 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType }) => {
       }
       
       fetchComments();
-    } catch (_err) {
+    } catch (err) {
+      console.error("Comment post error:", err);
       setError("Could not post your comment.");
     } finally {
       setSubmitting(false);
@@ -256,7 +268,7 @@ const CommentSection: React.FC<Props> = ({ mediaId, mediaType }) => {
 
     try {
       await supabase.from('comments').update({ likes: nextLikes, dislikes: nextDislikes }).eq('id', commentId);
-    } catch (_err) { /* ignore interaction update err */ }
+    } catch { /* ignore interaction update err */ }
   };
 
   const getTimeAgo = (dateStr: string) => {

@@ -1,26 +1,26 @@
 
 import React, { lazy, Suspense } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar.tsx';
-import MobileNav from './components/MobileNav.tsx';
-import AuthModal from './components/AuthModal.tsx';
-import ProfileModal from './components/ProfileModal.tsx';
-import { AuthProvider } from './context/AuthContext.tsx';
-import { DataProvider } from './context/DataContext.tsx';
-import { GenreProvider } from './context/GenreContext.tsx';
-import { HeroSkeleton } from './components/Skeleton.tsx';
+import Navbar from './components/Navbar';
+import MobileNav from './components/MobileNav';
+import AuthModal from './components/AuthModal';
+import ProfileModal from './components/ProfileModal';
+import { AuthProvider } from './context/AuthContext';
+import { DataProvider } from './context/DataContext';
+import { GenreProvider } from './context/GenreContext';
+import { HeroSkeleton } from './components/Skeleton';
 
-const Home = lazy(() => import('./pages/Home.tsx'));
-const Search = lazy(() => import('./pages/Search.tsx'));
-const Anime = lazy(() => import('./pages/Anime.tsx'));
-const Watchlist = lazy(() => import('./pages/Watchlist.tsx'));
-const Details = lazy(() => import('./pages/Details.tsx'));
-const Profile = lazy(() => import('./pages/Profile.tsx'));
-const Upcoming = lazy(() => import('./pages/Upcoming.tsx'));
-const AISuggest = lazy(() => import('./pages/AISuggest.tsx'));
-const Category = lazy(() => import('./pages/Category.tsx'));
-const Collections = lazy(() => import('./pages/Collections.tsx'));
-const CollectionDetails = lazy(() => import('./pages/CollectionDetails.tsx'));
+const Home = lazy(() => import('./pages/Home'));
+const Search = lazy(() => import('./pages/Search'));
+const Anime = lazy(() => import('./pages/Anime'));
+const Watchlist = lazy(() => import('./pages/Watchlist'));
+const Details = lazy(() => import('./pages/Details'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Upcoming = lazy(() => import('./pages/Upcoming'));
+const AISuggest = lazy(() => import('./pages/AISuggest'));
+const Category = lazy(() => import('./pages/Category'));
+const Collections = lazy(() => import('./pages/Collections'));
+const CollectionDetails = lazy(() => import('./pages/CollectionDetails'));
 
 const App: React.FC = () => {
   return (

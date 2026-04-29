@@ -8,14 +8,14 @@ const ProfileModal: React.FC = () => {
   const { user, isProfileModalOpen, closeProfileModal, logout, updateProfile } = useAuth();
   const { watchlist } = useWatchlist();
   
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [updateLoading, setUpdateLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
-    const handler = (e: any) => {
+    const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };

@@ -32,7 +32,7 @@ const CollectionDetails: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-24 pb-20 bg-[#121212] px-6 md:px-16 animate-pulse">
+      <div className="min-h-screen pt-0 md:pt-24 pb-20 bg-[#121212] px-6 md:px-16 animate-pulse">
         <div className="h-64 w-full bg-white/5 rounded-3xl mb-12" />
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-5">
           {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (

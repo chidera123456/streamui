@@ -104,15 +104,23 @@ const Navbar: React.FC = () => {
   };
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const isHomePage = location.pathname === '/';
 
-  if (isMobile && !isHomePage) return null;
+  const handleSearchClick = () => {
+    if (isMobile) {
+      navigate('/search');
+    } else {
+      setShowSearch(!showSearch);
+    }
+  };
+
+  // Remove Navbar from mobile entirely as requested.
+  if (isMobile) return null;
 
   return (
     <nav 
       ref={navRef}
-      className={`fixed top-0 left-0 right-0 z-[100] px-4 md:px-12 flex items-center justify-between transition-all duration-500 ease-in-out pt-safe ${
-        isScrolled ? 'bg-[#121212] h-16 md:h-20' : 'bg-gradient-to-b from-black/80 to-transparent h-20 md:h-24'
+      className={`fixed top-0 left-0 right-0 h-16 md:h-20 z-[100] px-4 md:px-12 flex items-center justify-between transition-colors duration-500 ease-in-out ${
+        isScrolled ? 'bg-[#121212]' : 'bg-gradient-to-b from-black/80 to-transparent'
       }`}
     >
       <div className="flex items-center gap-6 md:gap-12">
@@ -145,13 +153,13 @@ const Navbar: React.FC = () => {
         </div>
       </div>
 
-      <div className="hidden md:flex items-center gap-6">
-        <div className="flex items-center gap-5 text-white mr-2">
+      <div className="flex items-center gap-4 md:gap-6">
+        <div className="flex items-center gap-3 md:gap-5 text-white">
           {/* Inline Search Toggle */}
           <div className="relative">
             <button 
-              onClick={() => setShowSearch(!showSearch)}
-              className={`hover:scale-110 transition-all transform duration-300 ${showSearch ? 'text-[#1ce783]' : 'text-white'}`}
+              onClick={handleSearchClick}
+              className={`hover:scale-110 transition-all transform duration-300 ${showSearch ? 'text-[#1ce783]' : 'text-white'} p-2`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={showSearch ? "M6 18L18 6M6 6l12 12" : "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"} />
