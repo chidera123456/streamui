@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getDetails, getSeasonEpisodes, fetchSimilar, fetchLogos, getFromCache } from '../services/tmdbService';
+import { getDetails, getSeasonEpisodes, fetchSimilar, fetchRecommendations, fetchLogos, getFromCache } from '../services/tmdbService';
 import { Movie, Episode } from '../types';
 import { BACKDROP_URL, IMG_URL, LOGO_URL } from '../constants';
 import { useWatchlist } from '../hooks/useWatchlist';
@@ -12,7 +12,7 @@ declare global {
   interface Window {
     onYouTubeIframeAPIReady: () => void;
     YT: {
-      Player: new (element: HTMLIFrameElement | string, options: any) => any;
+      Player: new (element: HTMLIFrameElement | string, options: unknown) => any;
     };
   }
 }
@@ -171,8 +171,25 @@ const Details: React.FC = () => {
   const loadRecommendations = async (mediaId: number, mediaType: 'movie' | 'tv') => {
     setLoadingSimilar(true);
     try {
-      const results = await fetchSimilar(mediaId, mediaType);
-      setSimilarMedia(results);
+      const [similar, recommendations] = await Promise.all([
+        fetchSimilar(mediaId, mediaType),
+        fetchRecommendations(mediaId, mediaType)
+      ]);
+      
+      // Merge results, prioritize recommendations, then similar
+      const combined = [...recommendations, ...similar];
+      
+      // Deduplicate by ID and filter out the current media item, and ensure valid posters
+      const uniqueResults = combined.reduce((acc: Movie[], current) => {
+        const x = acc.find(item => item.id === current.id);
+        if (!x && current.id !== mediaId && current.poster_path) {
+          return acc.concat([{ ...current, media_type: current.media_type || mediaType }]);
+        } else {
+          return acc;
+        }
+      }, []);
+
+      setSimilarMedia(uniqueResults.slice(0, 24));
     } catch (err) {
       console.error("Recommendations failed", err);
     } finally {
@@ -295,8 +312,6 @@ const Details: React.FC = () => {
           await target.requestFullscreen();
         } else if ((target as any).webkitRequestFullscreen) {
           await (target as any).webkitRequestFullscreen();
-        } else if ((target as any).msRequestFullscreen) {
-          await (target as any).msRequestFullscreen();
         }
 
         if (window.screen?.orientation?.lock) {
@@ -587,7 +602,7 @@ const Details: React.FC = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-                  {similarMedia.filter(Boolean).slice(0, 16).map((item) => (<MediaCard key={item.id} media={item} />))}
+                  {similarMedia.filter(Boolean).slice(0, 24).map((item) => (<MediaCard key={item.id} media={item} />))}
                 </div>
             )}
           </section>

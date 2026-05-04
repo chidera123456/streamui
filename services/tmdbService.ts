@@ -282,6 +282,22 @@ export const fetchSimilar = async (id: number, type: 'movie' | 'tv'): Promise<Mo
     const data = await handleResponse(response, cacheKey);
     return (data.results || []).map((m: any) => ({ ...m, media_type: type }));
   } catch (err) {
+    console.error(`Error fetching similar for ${type} ${id}:`, err);
+    return [];
+  }
+};
+
+export const fetchRecommendations = async (id: number, type: 'movie' | 'tv'): Promise<Movie[]> => {
+  const cacheKey = `recommendations-${type}-${id}`;
+  const cached = getFromCache(cacheKey);
+  if (cached) return (cached.results || []).map((m: any) => ({ ...m, media_type: type }));
+
+  try {
+    const response = await secureFetch(`${TMDB_BASE_URL}/${type}/${id}/recommendations?api_key=${TMDB_API_KEY}`);
+    const data = await handleResponse(response, cacheKey);
+    return (data.results || []).map((m: any) => ({ ...m, media_type: type }));
+  } catch (err) {
+    console.error(`Error fetching recommendations for ${type} ${id}:`, err);
     return [];
   }
 };
