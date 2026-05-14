@@ -91,6 +91,20 @@ export interface Collection {
   parts?: Movie[];
 }
 
+export interface Actor {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  known_for_department: string;
+}
+
+export interface ActorDetails extends Actor {
+  biography: string;
+  birthday: string | null;
+  place_of_birth: string | null;
+  filmography: Movie[];
+}
+
 export interface Comment {
   id: string;
   user_id: string;

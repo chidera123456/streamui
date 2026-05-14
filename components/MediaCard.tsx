@@ -75,11 +75,18 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) 
             </button>
           )}
 
-          <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
-             <h3 className="text-white font-bold text-[10px] leading-tight mb-0.5 line-clamp-1 italic uppercase tracking-tighter">{title}</h3>
-             <div className="flex items-center justify-between">
-                <span className="text-[#1ce783] text-[8px] font-black">{year}</span>
-                <span className="text-white/40 text-[8px] font-bold">★ {media.vote_average.toFixed(1)}</span>
+          <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300 space-y-2">
+             <div className="space-y-0.5">
+               <h3 className="text-white font-bold text-[10px] leading-tight line-clamp-1 italic uppercase tracking-tighter">{title}</h3>
+               <div className="flex items-center justify-between">
+                  <span className="text-[#1ce783] text-[8px] font-black">{year}</span>
+                  <span className="text-white/40 text-[8px] font-bold">★ {media.vote_average.toFixed(1)}</span>
+               </div>
+             </div>
+             
+             <div className="hidden sm:flex w-full py-2 bg-[#1ce783] text-black text-[8px] font-black uppercase tracking-widest text-center rounded items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(28,231,131,0.3)]">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24"><path d="M7 6v12l10-6z" /></svg>
+                Watch Now
              </div>
           </div>
         </div>

@@ -193,16 +193,18 @@ const Anime: React.FC = () => {
 
       <div className="space-y-16 md:space-y-24 mt-8 md:mt-12 px-6 md:px-16 relative z-30">
         <section className="space-y-6">
-          <div className="flex items-end justify-between border-b border-white/5 pb-4">
-            <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1ce783]">Combat & Power</p>
-              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-[#1ce783]">
-                Action Anime
-              </h2>
+          <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+            <div className="flex items-baseline gap-3">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1ce783]">Combat & Power</p>
+                <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-[#1ce783]">
+                  Action Anime
+                </h2>
+              </div>
+              <Link to="/category/anime-action" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-[#1ce783] transition-colors whitespace-nowrap">
+                Explore All
+              </Link>
             </div>
-            <Link to="/category/anime-action" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
-              Explore All
-            </Link>
           </div>
           {loadingAction ? <GridSkeleton count={8} /> : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 md:gap-5">
@@ -214,16 +216,18 @@ const Anime: React.FC = () => {
         </section>
 
         <section className="space-y-6">
-          <div className="flex items-end justify-between border-b border-white/5 pb-4">
-            <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1ce783]">Other Worlds</p>
-              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-[#1ce783]">
-                Fantasy & Sci-Fi
-              </h2>
+          <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+            <div className="flex items-baseline gap-3">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1ce783]">Other Worlds</p>
+                <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-[#1ce783]">
+                  Fantasy & Sci-Fi
+                </h2>
+              </div>
+              <Link to="/category/anime-fantasy" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-[#1ce783] transition-colors whitespace-nowrap">
+                Explore All
+              </Link>
             </div>
-            <Link to="/category/anime-fantasy" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
-              Explore All
-            </Link>
           </div>
           {loadingFantasy ? <GridSkeleton count={8} /> : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 md:gap-5">
@@ -235,16 +239,18 @@ const Anime: React.FC = () => {
         </section>
 
         <section className="space-y-6">
-          <div className="flex items-end justify-between border-b border-white/5 pb-4">
-            <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1ce783]">Global Pulse</p>
-              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-[#1ce783]">
-                Trending Japan
-              </h2>
+          <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+            <div className="flex items-baseline gap-3">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#1ce783]">Global Pulse</p>
+                <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-[#1ce783]">
+                  Trending Japan
+                </h2>
+              </div>
+              <Link to="/category/anime" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-[#1ce783] transition-colors whitespace-nowrap">
+                Explore All
+              </Link>
             </div>
-            <Link to="/category/anime" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
-              Explore All
-            </Link>
           </div>
           {loadingTrending ? <GridSkeleton count={8} /> : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 md:gap-5">

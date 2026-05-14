@@ -1,6 +1,6 @@
 
 import { TMDB_API_KEY, TMDB_BASE_URL } from '../constants.ts';
-import { Movie, Episode, Collection } from '../types.ts';
+import { Movie, Episode, Collection, Actor, ActorDetails } from '../types.ts';
 
 const CACHE_KEY_PREFIX = 'zenstream-cache-';
 const CACHE_DURATION = 1000 * 60 * 60 * 24; // 24 hours for better persistence
@@ -403,4 +403,50 @@ export const findByTitle = async (title: string): Promise<Movie | null> => {
 
 export const isCached = (key: string): boolean => {
   return !!getFromCache(key);
+};
+
+export const searchActors = async (query: string, page: number = 1): Promise<{ results: Actor[], totalPages: number }> => {
+  const cacheKey = `search-actors-${query}-${page}`;
+  try {
+    const response = await secureFetch(`${TMDB_BASE_URL}/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}`);
+    const data = await handleResponse(response, cacheKey);
+    return {
+      results: data.results || [],
+      totalPages: data.total_pages || 1
+    };
+  } catch {
+    return { results: [], totalPages: 0 };
+  }
+};
+
+export const getActorDetails = async (id: number): Promise<ActorDetails | null> => {
+  const cacheKey = `actor-details-${id}`;
+  const cached = getFromCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const [detailsResponse, creditsResponse] = await Promise.all([
+      secureFetch(`${TMDB_BASE_URL}/person/${id}?api_key=${TMDB_API_KEY}`),
+      secureFetch(`${TMDB_BASE_URL}/person/${id}/combined_credits?api_key=${TMDB_API_KEY}`)
+    ]);
+
+    const details = await handleResponse(detailsResponse);
+    const credits = await handleResponse(creditsResponse);
+
+    // Filter and sort filmography by popularity
+    const filmography = (credits.cast || [])
+      .filter((m: any) => m.poster_path && (m.media_type === 'movie' || m.media_type === 'tv'))
+      .sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0))
+      .map((m: any) => ({ ...m, media_type: m.media_type }));
+
+    const actorDetails: ActorDetails = {
+      ...details,
+      filmography
+    };
+
+    saveToLocalStorage(cacheKey, actorDetails);
+    return actorDetails;
+  } catch {
+    return null;
+  }
 };

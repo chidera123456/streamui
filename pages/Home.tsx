@@ -6,7 +6,6 @@ import { useHistory } from '../hooks/useHistory';
 import { Movie } from '../types';
 import { BACKDROP_URL, LOGO_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
-import FeaturedCollections from '../components/FeaturedCollections';
 import { HeroSkeleton, GridSkeleton } from '../components/Skeleton';
 import { useGenres } from '../context/GenreContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -60,15 +59,15 @@ const MediaSection: React.FC<{
 
   return (
     <section className="relative space-y-6 px-6 md:px-16">
-      <div className="flex items-end justify-between border-b border-white/5 pb-4">
-        <div className="space-y-1">
+      <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+        <div className="flex items-baseline gap-3">
           <h2 className="text-lg md:text-xl font-black uppercase italic tracking-tighter" style={{ color }}>
             {title}
           </h2>
+          <Link to={categoryId ? `/category/${categoryId}` : "/search"} className="text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-[#1ce783] transition-colors whitespace-nowrap">
+            Explore All
+          </Link>
         </div>
-        <Link to={categoryId ? `/category/${categoryId}` : "/search"} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
-          Explore All
-        </Link>
       </div>
       
       {showSkeleton ? (
@@ -320,8 +319,6 @@ const Home: React.FC = () => {
           categoryId="trending"
           color="#1ce783"
         />
-
-        <FeaturedCollections />
 
         <MediaSection 
           title="Award Winning" 

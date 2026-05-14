@@ -21,6 +21,8 @@ const AISuggest = lazy(() => import('./pages/AISuggest'));
 const Category = lazy(() => import('./pages/Category'));
 const Collections = lazy(() => import('./pages/Collections'));
 const CollectionDetails = lazy(() => import('./pages/CollectionDetails'));
+const ActorSearch = lazy(() => import('./pages/ActorSearch'));
+const ActorProfile = lazy(() => import('./pages/ActorProfile'));
 
 const App: React.FC = () => {
   return (
@@ -47,6 +49,8 @@ const App: React.FC = () => {
                   <Route path="/category/:id" element={<Category />} />
                   <Route path="/collections" element={<Collections />} />
                   <Route path="/collection/:id" element={<CollectionDetails />} />
+                  <Route path="/stars" element={<ActorSearch />} />
+                  <Route path="/actor/:id" element={<ActorProfile />} />
                 </Routes>
               </Suspense>
             </main>
