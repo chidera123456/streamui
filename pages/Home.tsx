@@ -28,19 +28,26 @@ const HorizontalSection: React.FC<{
         </div>
       </div>
       
-      <div className="flex overflow-x-auto overflow-y-visible gap-4 md:gap-6 px-6 md:px-16 pb-12 pt-10 -mt-10 hide-scrollbar snap-x snap-mandatory relative z-30">
-        {movies.map((item) => (
-          /* Fixed width and shrink-0 ensure posters stay the same size even when others are removed */
-          <div key={`${item.id}-${item.media_type}`} className="w-[120px] md:w-[160px] lg:w-[180px] shrink-0 snap-start">
-            <MediaCard 
-              media={item} 
-              onRemove={onRemoveItem ? (e) => {
-                e.preventDefault();
-                onRemoveItem(item.id);
-              } : undefined}
-            />
-          </div>
-        ))}
+      <div className="relative group/scroll">
+        {/* Left Fade */}
+        <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-black via-black/40 to-transparent z-40 pointer-events-none opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300 hidden md:block"></div>
+        
+        {/* Right Fade */}
+        <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-black via-black/40 to-transparent z-40 pointer-events-none opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300 hidden md:block"></div>
+
+        <div className="flex overflow-x-auto overflow-y-visible gap-3 md:gap-4 px-6 md:px-16 pb-12 pt-10 -mt-10 hide-scrollbar snap-x snap-mandatory relative z-30 transition-gpu scroll-px-6 md:scroll-px-16">
+          {movies.map((item) => (
+            <div key={`${item.id}-${item.media_type}`} className="w-[110px] md:w-[145px] lg:w-[155px] shrink-0 snap-start smooth-scroll-child">
+              <MediaCard 
+                media={item} 
+                onRemove={onRemoveItem ? (e) => {
+                  e.preventDefault();
+                  onRemoveItem(item.id);
+                } : undefined}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -52,14 +59,15 @@ const MediaSection: React.FC<{
   loading: boolean; 
   color?: string;
   categoryId?: string;
+  subtitle?: string;
 }> = ({ title, movies, loading, color = "#1ce783", categoryId }) => {
   const showSkeleton = loading && movies.length === 0;
 
   if (!loading && movies.length === 0) return null;
 
   return (
-    <section className="relative space-y-6 px-6 md:px-16">
-      <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+    <section className="relative space-y-6">
+      <div className="flex items-center gap-4 border-b border-white/5 pb-4 px-6 md:px-16">
         <div className="flex items-baseline gap-3">
           <h2 className="text-lg md:text-xl font-black uppercase italic tracking-tighter" style={{ color }}>
             {title}
@@ -71,12 +79,32 @@ const MediaSection: React.FC<{
       </div>
       
       {showSkeleton ? (
-        <GridSkeleton count={8} />
+        <div className="px-6 md:px-16">
+          <GridSkeleton count={8} />
+        </div>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 md:gap-5">
-          {movies.slice(0, 16).map((item) => (
-            <MediaCard key={`${item.id}-${item.media_type}`} media={item} />
-          ))}
+        <div className="w-full relative group/scroll">
+          {/* Mobile Grid */}
+          <div className="grid grid-cols-3 gap-3 md:hidden px-6">
+            {movies.slice(0, 6).map((item) => (
+              <MediaCard key={`${item.id}-${item.media_type}`} media={item} />
+            ))}
+          </div>
+          
+          {/* Desktop Side Scroll indicators */}
+          <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-black via-black/40 to-transparent z-40 pointer-events-none opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300 hidden md:block"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-black via-black/40 to-transparent z-40 pointer-events-none opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300 hidden md:block"></div>
+
+          {/* Desktop Side Scroll */}
+          <div className="hidden md:flex overflow-x-auto overflow-y-visible hide-scrollbar gap-4 px-16 pb-12 pt-10 -mt-10 relative z-30 transition-gpu scroll-px-16">
+            {movies.map((item) => (
+              <div key={`${item.id}-${item.media_type}`} className="w-[145px] lg:w-[155px] shrink-0 smooth-scroll-child">
+                <MediaCard media={item} />
+              </div>
+            ))}
+            {/* Spacer for right padding */}
+            <div className="w-16 shrink-0 h-1 smooth-scroll-child"></div>
+          </div>
         </div>
       )}
     </section>

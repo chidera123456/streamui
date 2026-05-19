@@ -34,7 +34,7 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) 
     <div className="relative z-10">
       <Link to={`/details/${media.media_type}/${media.id}`}>
         <div 
-          className="group relative bg-[#1c1c1c] rounded-lg overflow-hidden border border-white/5 transition-all duration-300 hover:scale-105 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] w-full aspect-[2/3]"
+          className="group relative bg-[#1c1c1c] rounded-lg overflow-hidden border border-white/5 transition-all duration-300 hover:scale-105 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] w-full aspect-[2/3] transform-gpu"
         >
           <img 
             src={poster} 
