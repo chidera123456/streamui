@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchTrending, fetchAnime, fetchNetflixContent, fetchAwardWinning, fetchComedyTV, fetchTopRatedTV, getFromCache, fetchLogos } from '../services/tmdbService';
 import { useHistory } from '../hooks/useHistory';
-import { Movie } from '../types';
+import { Movie, HistoryItem } from '../types';
 import { BACKDROP_URL, LOGO_URL } from '../constants';
 import MediaCard from '../components/MediaCard';
 import { HeroSkeleton, GridSkeleton } from '../components/Skeleton';
@@ -12,11 +12,11 @@ import { motion, AnimatePresence } from 'motion/react';
 
 const HorizontalSection: React.FC<{ 
   title: string; 
-  movies: Movie[]; 
+  items: HistoryItem[]; 
   color?: string;
   onRemoveItem?: (id: number) => void;
-}> = ({ title, movies, color = "#1ce783", onRemoveItem }) => {
-  if (movies.length === 0) return null;
+}> = ({ title, items, color = "#1ce783", onRemoveItem }) => {
+  if (items.length === 0) return null;
 
   return (
     <section className="relative space-y-6">
@@ -35,18 +35,23 @@ const HorizontalSection: React.FC<{
         {/* Right Fade */}
         <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-black via-black/40 to-transparent z-40 pointer-events-none opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300 hidden md:block"></div>
 
-        <div className="flex overflow-x-auto overflow-y-visible gap-3 md:gap-4 px-6 md:px-16 pb-12 pt-10 -mt-10 hide-scrollbar snap-x snap-mandatory relative z-30 transition-gpu scroll-px-6 md:scroll-px-16">
-          {movies.map((item) => (
-            <div key={`${item.id}-${item.media_type}`} className="w-[110px] md:w-[145px] lg:w-[155px] shrink-0 snap-start smooth-scroll-child">
+        <div className="flex overflow-x-auto overflow-y-visible gap-4 px-6 md:px-16 pb-12 pt-10 -mt-10 hide-scrollbar snap-x snap-mandatory relative z-30 transition-gpu scroll-px-6 md:scroll-px-16">
+          {items.map((item) => (
+            <div key={`${item.media_data.id}-${item.media_type}`} className="w-[180px] md:w-[245px] lg:w-[265px] shrink-0 snap-start smooth-scroll-child">
               <MediaCard 
-                media={item} 
+                media={item.media_data} 
+                variant="landscape"
+                season={item.season}
+                episode={item.episode}
                 onRemove={onRemoveItem ? (e) => {
                   e.preventDefault();
-                  onRemoveItem(item.id);
+                  onRemoveItem(item.media_id);
                 } : undefined}
               />
             </div>
           ))}
+          {/* Spacer for right horizontal scroll padding */}
+          <div className="w-16 shrink-0 h-1 smooth-scroll-child"></div>
         </div>
       </div>
     </section>
@@ -60,22 +65,62 @@ const MediaSection: React.FC<{
   color?: string;
   categoryId?: string;
   subtitle?: string;
-}> = ({ title, movies, loading, color = "#1ce783", categoryId }) => {
+  variant?: 'portrait' | 'landscape';
+  isRanked?: boolean;
+  tabs?: Array<{ id: string; label: string }>;
+  activeTab?: string;
+  onTabChange?: (tabId: string) => void;
+}> = ({ 
+  title, 
+  movies, 
+  loading, 
+  color = "#1ce783", 
+  categoryId, 
+  variant = 'portrait', 
+  isRanked = false,
+  tabs,
+  activeTab,
+  onTabChange
+}) => {
   const showSkeleton = loading && movies.length === 0;
 
   if (!loading && movies.length === 0) return null;
 
   return (
     <section className="relative space-y-6">
-      <div className="flex items-center gap-4 border-b border-white/5 pb-4 px-6 md:px-16">
+      <div className="flex items-center justify-between border-b border-white/5 pb-4 px-6 md:px-16">
         <div className="flex items-baseline gap-3">
           <h2 className="text-lg md:text-xl font-black uppercase italic tracking-tighter" style={{ color }}>
             {title}
           </h2>
-          <Link to={categoryId ? `/category/${categoryId}` : "/search"} className="text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-[#1ce783] transition-colors whitespace-nowrap">
-            Explore All
-          </Link>
+          {!tabs && categoryId && (
+            <Link to={categoryId ? `/category/${categoryId}` : "/search"} className="text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-[#1ce783] transition-colors whitespace-nowrap">
+              Explore All
+            </Link>
+          )}
         </div>
+
+        {/* Dynamic section tabs */}
+        {tabs && onTabChange && (
+          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/5">
+            {tabs.map((tab) => {
+              const isActive = tab.id === activeTab;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-[#1ce783] text-black shadow-lg shadow-[#1ce783]/20' 
+                      : 'text-white/50 hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       
       {showSkeleton ? (
@@ -84,27 +129,76 @@ const MediaSection: React.FC<{
         </div>
       ) : (
         <div className="w-full relative group/scroll">
-          {/* Mobile Grid */}
-          <div className="grid grid-cols-3 gap-3 md:hidden px-6">
-            {movies.slice(0, 6).map((item) => (
-              <MediaCard key={`${item.id}-${item.media_type}`} media={item} />
-            ))}
-          </div>
+          {/* Mobile Layouts */}
+          {variant === 'landscape' ? (
+            <div className="grid grid-cols-2 gap-3 md:hidden px-6">
+              {movies.slice(0, 4).map((item) => (
+                <MediaCard key={`${item.id}-${item.media_type}`} media={item} variant="landscape" />
+              ))}
+            </div>
+          ) : isRanked ? (
+            <div className="grid grid-cols-3 gap-3 md:hidden px-6">
+              {movies.slice(0, 6).map((item, idx) => (
+                <div key={`${item.id}-${item.media_type}`} className="relative">
+                  <span className="absolute top-1 left-1 z-30 bg-black/85 text-[#1ce783] text-[9.5px] font-black px-1.5 py-0.5 rounded border border-white/10 shadow-lg">
+                    #{idx + 1}
+                  </span>
+                  <MediaCard media={item} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3 md:hidden px-6">
+              {movies.slice(0, 6).map((item) => (
+                <MediaCard key={`${item.id}-${item.media_type}`} media={item} />
+              ))}
+            </div>
+          )}
           
           {/* Desktop Side Scroll indicators */}
           <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-black via-black/40 to-transparent z-40 pointer-events-none opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300 hidden md:block"></div>
           <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-black via-black/40 to-transparent z-40 pointer-events-none opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300 hidden md:block"></div>
 
           {/* Desktop Side Scroll */}
-          <div className="hidden md:flex overflow-x-auto overflow-y-visible hide-scrollbar gap-4 px-16 pb-12 pt-10 -mt-10 relative z-30 transition-gpu scroll-px-16">
-            {movies.map((item) => (
-              <div key={`${item.id}-${item.media_type}`} className="w-[145px] lg:w-[155px] shrink-0 smooth-scroll-child">
-                <MediaCard media={item} />
-              </div>
-            ))}
-            {/* Spacer for right padding */}
-            <div className="w-16 shrink-0 h-1 smooth-scroll-child"></div>
-          </div>
+          {variant === 'landscape' ? (
+            <div className="hidden md:flex overflow-x-auto overflow-y-visible hide-scrollbar gap-4 px-16 pb-12 pt-10 -mt-10 relative z-30 transition-gpu scroll-px-16">
+              {movies.map((item) => (
+                <div key={`${item.id}-${item.media_type}`} className="w-[245px] lg:w-[265px] shrink-0 smooth-scroll-child">
+                  <MediaCard media={item} variant="landscape" />
+                </div>
+              ))}
+              {/* Spacer for right padding */}
+              <div className="w-16 shrink-0 h-1 smooth-scroll-child"></div>
+            </div>
+          ) : isRanked ? (
+            <div className="hidden md:flex overflow-x-auto overflow-y-visible hide-scrollbar gap-5 px-16 pb-12 pt-10 -mt-10 relative z-30 transition-gpu scroll-px-16">
+              {movies.slice(0, 10).map((item, index) => (
+                <div key={`${item.id}-${item.media_type}`} className="flex items-center shrink-0 smooth-scroll-child">
+                  <span 
+                    className="text-8xl md:text-9xl font-black font-sans tracking-tighter text-transparent select-none mr-[-0.75rem] z-20 transition-all duration-300 transform group-hover/scroll:scale-105" 
+                    style={{ WebkitTextStroke: '2.5px rgba(255,255,255,0.18)' }}
+                  >
+                    {index + 1}
+                  </span>
+                  <div className="w-[145px] lg:w-[155px]">
+                    <MediaCard media={item} />
+                  </div>
+                </div>
+              ))}
+              {/* Spacer for right padding */}
+              <div className="w-16 shrink-0 h-1 smooth-scroll-child"></div>
+            </div>
+          ) : (
+            <div className="hidden md:flex overflow-x-auto overflow-y-visible hide-scrollbar gap-4 px-16 pb-12 pt-10 -mt-10 relative z-30 transition-gpu scroll-px-16">
+              {movies.map((item) => (
+                <div key={`${item.id}-${item.media_type}`} className="w-[145px] lg:w-[155px] shrink-0 smooth-scroll-child">
+                  <MediaCard media={item} />
+                </div>
+              ))}
+              {/* Spacer for right padding */}
+              <div className="w-16 shrink-0 h-1 smooth-scroll-child"></div>
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -123,6 +217,7 @@ const Home: React.FC = () => {
   const [awardWinning, setAwardWinning] = useState<Movie[]>(() => getFromCache('award-winning-movie-1')?.results || []);
   const [comedyTV, setComedyTV] = useState<Movie[]>(() => getFromCache('comedy-tv-1')?.results || []);
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>(() => getFromCache('top-rated-tv-1')?.results || []);
+  const [trendingType, setTrendingType] = useState<'movie' | 'tv'>('movie');
   
   const [heroIndex, setHeroIndex] = useState(() => Math.floor(Math.random() * 12));
   const [heroLogos, setHeroLogos] = useState<Record<number, string | null>>(() => {
@@ -333,19 +428,42 @@ const Home: React.FC = () => {
         {history.length > 0 && (
           <HorizontalSection 
             title="Continue Watching" 
-            movies={history.map(h => h.media_data)} 
+            items={history} 
             color="#1ce783" 
             onRemoveItem={(id) => removeFromHistory(id)}
           />
         )}
 
         <MediaSection 
-          title="Trending Now" 
-          subtitle="Cinematic Pulse" 
-          movies={trending} 
-          loading={loadingTrending} 
-          categoryId="trending"
+          title="Trending Today" 
+          movies={trendingType === 'movie' ? trending : tvTrending} 
+          loading={trendingType === 'movie' ? loadingTrending : loadingTV} 
+          categoryId={trendingType === 'movie' ? "trending" : "tv"}
           color="#1ce783"
+          tabs={[
+            { id: 'movie', label: 'Movies' },
+            { id: 'tv', label: 'Series' }
+          ]}
+          activeTab={trendingType}
+          onTabChange={(tabId) => setTrendingType(tabId as 'movie' | 'tv')}
+        />
+
+        <MediaSection 
+          title="TOP 10 Series Today" 
+          movies={topRatedTV} 
+          loading={loadingTopRatedTV} 
+          color="#1ce783"
+          isRanked={true}
+          categoryId="top-rated-tv"
+        />
+
+        <MediaSection 
+          title="Only on Netflix" 
+          movies={netflix} 
+          loading={loadingNetflix} 
+          color="#1ce783"
+          variant="landscape"
+          categoryId="netflix"
         />
 
         <MediaSection 
@@ -358,15 +476,6 @@ const Home: React.FC = () => {
         />
 
         <MediaSection 
-          title="Netflix Originals" 
-          subtitle="Global Premiere" 
-          movies={netflix} 
-          loading={loadingNetflix} 
-          color="#1ce783"
-          categoryId="netflix"
-        />
-
-        <MediaSection 
           title="Anime Hits" 
           subtitle="Rising Sun" 
           movies={anime} 
@@ -376,30 +485,12 @@ const Home: React.FC = () => {
         />
 
         <MediaSection 
-          title="Popular Series" 
-          subtitle="Must Watch" 
-          movies={tvTrending} 
-          loading={loadingTV} 
-          categoryId="tv"
-          color="#1ce783"
-        />
-
-        <MediaSection 
           title="Comedy Series" 
           subtitle="Laughter Guaranteed" 
           movies={comedyTV} 
           loading={loadingComedy} 
           color="#1ce783"
           categoryId="comedy-tv"
-        />
-
-        <MediaSection 
-          title="Top Rated TV Shows" 
-          subtitle="All Time Greats" 
-          movies={topRatedTV} 
-          loading={loadingTopRatedTV} 
-          color="#1ce783"
-          categoryId="top-rated-tv"
         />
       </div>
     </div>
