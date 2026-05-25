@@ -3,33 +3,24 @@ import React, { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Movie } from '../types';
 import { useWatchlist } from '../hooks/useWatchlist';
-import { IMG_URL, BACKDROP_URL } from '../constants';
+import { IMG_URL } from '../constants';
 
 interface Props {
   media: Movie;
   priority?: boolean;
   onRemove?: (e: React.MouseEvent) => void;
-  variant?: 'portrait' | 'landscape';
-  season?: number;
-  episode?: number;
-  progress?: number;
 }
 
-const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove, variant = 'portrait', season, episode, progress }) => {
+const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove }) => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   
   if (!media) return null;
 
   const title = media.title || media.name || 'Unknown Title';
   const year = (media.release_date || media.first_air_date || '').substring(0, 4);
-  
   const poster = media.poster_path 
     ? `${IMG_URL}${media.poster_path}`
     : `https://via.placeholder.com/342x513/111/444?text=${encodeURIComponent(title || 'N/A')}`;
-
-  const backdrop = media.backdrop_path
-    ? `${BACKDROP_URL}${media.backdrop_path}`
-    : poster;
 
   const inList = isInWatchlist(media.id);
 
@@ -39,80 +30,11 @@ const MediaCard: React.FC<Props> = memo(({ media, priority = false, onRemove, va
     toggleWatchlist(media);
   };
 
-  const progressPercent = progress !== undefined ? progress : ((media.id % 40) + 35); // Stable mock progress 35-75%
-
-  if (variant === 'landscape') {
-    return (
-      <div className="relative z-10 w-full group/card">
-        <Link to={`/details/${media.media_type}/${media.id}`}>
-          <div className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-[#141414] transition-all duration-300 hover:scale-[1.03] hover:border-white/20 select-none transform-gpu">
-            {/* Backdrop Image */}
-            <img 
-              src={backdrop} 
-              alt={title}
-              loading={priority ? "eager" : "lazy"}
-              decoding="async"
-              className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-105"
-            />
-            
-            {/* Subtle Vignette Overlay and Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-            
-            {/* Play Button Icon Hover Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 bg-black/30 backdrop-blur-[1px]">
-              <div className="p-3 bg-[#1ce783] text-black rounded-full scale-90 group-hover/card:scale-100 transition-transform duration-300 shadow-lg shadow-[#1ce783]/30">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-              </div>
-            </div>
-
-            {/* Quick Watchlist/Remove Buttons */}
-            <div className="absolute top-2 right-2 flex items-center gap-1.5 z-20">
-              {onRemove && (
-                <button 
-                  onClick={onRemove}
-                  className="p-1.5 rounded-full bg-black/70 text-white/70 hover:text-white hover:bg-red-500/80 transition-all border border-white/10 active:scale-95"
-                  title="Remove"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            {/* Always Visible Text Overlay */}
-            <div className="absolute bottom-3 left-3 right-3 z-10">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5">
-                  {(season !== undefined || episode !== undefined || media.media_type === 'tv') && (
-                    <span className="bg-[#1ce783] text-black text-[7.5px] font-black uppercase tracking-wider px-1 py-0.5 rounded-sm">
-                      {season !== undefined && episode !== undefined ? `S${season}:E${episode}` : 'EPISODE'}
-                    </span>
-                  )}
-                  <span className="text-white/40 text-[7.5px] font-bold uppercase tracking-wider">{year}</span>
-                </div>
-                <h3 className="text-white font-bold text-[10px] leading-tight line-clamp-1 italic uppercase tracking-tighter">{title}</h3>
-              </div>
-            </div>
-
-            {/* Red Progress Bar styled like streaming apps */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10 z-20">
-              <div 
-                className="h-full bg-red-600 transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="relative z-10">
       <Link to={`/details/${media.media_type}/${media.id}`}>
         <div 
-          className="group relative bg-[#1c1c1c] rounded-lg overflow-hidden border border-white/5 transition-all duration-300 hover:scale-105 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] w-full aspect-[2/3] transform-gpu"
+          className="group relative bg-[#1c1c1c] rounded-lg overflow-hidden border border-white/5 transition-all duration-300 hover:scale-105 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] w-full aspect-[2/3]"
         >
           <img 
             src={poster} 
