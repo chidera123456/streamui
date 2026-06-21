@@ -58,6 +58,8 @@ const Details: React.FC = () => {
   const [animeSource, setAnimeSource] = useState<'animepahe' | 'anime'>(() => {
     return (localStorage.getItem('ts_anime_source') as 'animepahe' | 'anime') || 'animepahe';
   });
+  const [anilistId, setAnilistId] = useState<number | null>(null);
+  const [isResolvingAnilist, setIsResolvingAnilist] = useState(false);
   
   const previewTimerRef = useRef<number | null>(null);
   const sleepIntervalRef = useRef<number | null>(null);
@@ -70,8 +72,77 @@ const Details: React.FC = () => {
   
   const isAnime = useMemo(() => {
     if (!media) return false;
-    return media.genres?.some(g => g.id === 16) && media.original_language === 'ja';
+    const hasAnimationGenre = media.genres?.some(g => g.id === 16);
+    const isJapanese = media.original_language === 'ja' || media.production_companies?.some(c => c.origin_country === 'JP');
+    const mediaWithCountry = media as { origin_country?: string[]; production_countries?: { iso_3166_1: string }[] };
+    const isFromJapan = mediaWithCountry.origin_country?.includes('JP') || mediaWithCountry.production_countries?.some(c => c.iso_3166_1 === 'JP');
+    return hasAnimationGenre && (isJapanese || isFromJapan);
   }, [media]);
+
+  useEffect(() => {
+    if (!isAnime || !media) return;
+
+    const cacheKey = `ts_anilist_id_${media.id}`;
+    const cachedId = localStorage.getItem(cacheKey);
+    if (cachedId) {
+      setAnilistId(Number(cachedId));
+      return;
+    }
+
+    const resolveAnilistId = async () => {
+      setIsResolvingAnilist(true);
+      const searchTerms = [
+        media.name || media.title,
+        media.original_name || media.original_title
+      ].filter(Boolean);
+
+      const query = `
+        query ($search: String) {
+          Page (page: 1, perPage: 1) {
+            media (search: $search, type: ANIME) {
+              id
+            }
+          }
+        }
+      `;
+
+      for (const term of searchTerms) {
+        try {
+          const response = await fetch('https://graphql.anilist.co', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+              query,
+              variables: { search: term }
+            })
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            const foundId = result?.data?.Page?.media?.[0]?.id;
+            if (foundId) {
+              setAnilistId(foundId);
+              localStorage.setItem(cacheKey, String(foundId));
+              setIsResolvingAnilist(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Error resolving AniList ID for term:', term, err);
+        }
+      }
+
+      // If we couldn't resolve via AniList GraphQL, fallback to tvdb_id or tmdbId
+      const fallback = media.external_ids?.tvdb_id || media.id;
+      setAnilistId(fallback);
+      setIsResolvingAnilist(false);
+    };
+
+    resolveAnilistId();
+  }, [isAnime, media]);
 
   const lastWatched = useMemo(() => {
     if (!isTv || !history) return null;
@@ -314,10 +385,10 @@ const Details: React.FC = () => {
     
     if (activeServer === 'vidnest') {
       if (isAnime) {
-        const anilistId = media?.external_ids?.tvdb_id || tmdbId;
+        const idToUse = anilistId || media?.external_ids?.tvdb_id || tmdbId;
         const subOrDub = animeSubOrDub;
         const ep = isTv ? currentEpisode : 1;
-        return `https://vidnest.fun/${animeSource}/${anilistId}/${ep}/${subOrDub}`;
+        return `https://vidnest.fun/${animeSource}/${idToUse}/${ep}/${subOrDub}`;
       }
       if (isTv) {
         return `https://vidnest.fun/tv/${tmdbId}/${currentSeason}/${currentEpisode}`;
@@ -329,7 +400,7 @@ const Details: React.FC = () => {
       return `https://www.vidking.net/embed/tv/${tmdbId}/${currentSeason}/${currentEpisode}?${params}`;
     }
     return `https://www.vidking.net/embed/movie/${tmdbId}?${params}`;
-  }, [id, currentSeason, currentEpisode, isTv, activeServer, isAnime, media, animeSubOrDub, animeSource]);
+  }, [id, currentSeason, currentEpisode, isTv, activeServer, isAnime, media, animeSubOrDub, animeSource, anilistId]);
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
   const backgroundTrailerUrl = useMemo(() => {
@@ -443,6 +514,13 @@ const Details: React.FC = () => {
                   onLoad={() => setPlayerLoading(false)}
                   title="Player"
                 />
+
+                {isAnime && isResolvingAnilist && (
+                  <div className="absolute inset-0 bg-black/95 z-10 flex flex-col items-center justify-center gap-4 animate-in fade-in duration-300">
+                    <div className="w-12 h-12 border-4 border-[#1ce783]/20 border-t-[#1ce783] rounded-full animate-spin" />
+                    <p className="text-sm font-black uppercase tracking-widest text-[#1ce783] animate-pulse">Resolving AniList ID...</p>
+                  </div>
+                )}
               </div>
             ) : (
               <>
