@@ -51,6 +51,8 @@ const Details: React.FC = () => {
   const [activeServer, setActiveServer] = useState<'vidking' | 'vidnest'>(() => {
     return (localStorage.getItem('ts_server') as 'vidking' | 'vidnest') || 'vidking';
   });
+  const [anilistId, setAnilistId] = useState<number | null>(null);
+  const [subOrDub, setSubOrDub] = useState<'sub' | 'dub'>('sub');
   
   const previewTimerRef = useRef<number | null>(null);
   const sleepIntervalRef = useRef<number | null>(null);
@@ -60,6 +62,55 @@ const Details: React.FC = () => {
   const episodeListRef = useRef<HTMLDivElement>(null);
 
   const isTv = type?.toLowerCase() === 'tv';
+
+  const isAnime = useMemo(() => {
+    return media?.genres?.some(g => g.id === 16) || false;
+  }, [media]);
+
+  useEffect(() => {
+    if (isAnime && media) {
+      const title = media.name || media.title || media.original_name || '';
+      if (!title) return;
+
+      const query = `
+      query ($search: String, $page: Int, $perPage: Int) {
+        Page (page: $page, perPage: $perPage) {
+          media (search: $search, type: ANIME) {
+            id
+          }
+        }
+      }
+      `;
+
+      const variables = {
+          search: title,
+          page: 1,
+          perPage: 1
+      };
+
+      fetch('https://graphql.anilist.co', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+              query,
+              variables
+          })
+      })
+      .then(response => response.json())
+      .then(result => {
+          const animeList = result?.data?.Page?.media;
+          if (animeList && animeList.length > 0) {
+              setAnilistId(animeList[0].id);
+          }
+      })
+      .catch(err => console.error("Error fetching AniList ID:", err));
+    } else {
+      setAnilistId(null);
+    }
+  }, [isAnime, media]);
 
   const lastWatched = useMemo(() => {
     if (!isTv || !history) return null;
@@ -278,6 +329,9 @@ const Details: React.FC = () => {
     const params = "color=1db954&autoPlay=true&nextEpisode=true&episodeSelector=true";
     
     if (activeServer === 'vidnest') {
+      if (isAnime && anilistId) {
+        return `https://vidnest.fun/animepahe/${anilistId}/${currentEpisode}/${subOrDub}`;
+      }
       if (isTv) {
         return `https://vidnest.fun/tv/${tmdbId}/${currentSeason}/${currentEpisode}`;
       }
@@ -288,7 +342,7 @@ const Details: React.FC = () => {
       return `https://www.vidking.net/embed/tv/${tmdbId}/${currentSeason}/${currentEpisode}?${params}`;
     }
     return `https://www.vidking.net/embed/movie/${tmdbId}?${params}`;
-  }, [id, currentSeason, currentEpisode, isTv, activeServer]);
+  }, [id, currentSeason, currentEpisode, isTv, activeServer, isAnime, anilistId, subOrDub]);
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
   const backgroundTrailerUrl = useMemo(() => {
@@ -524,6 +578,24 @@ const Details: React.FC = () => {
                       VidNest
                     </button>
                   </div>
+
+                  {isAnime && activeServer === 'vidnest' && (
+                    <div className="flex items-center gap-1 bg-white/5 p-1 rounded-md border border-white/10 animate-in fade-in zoom-in-95 duration-300">
+                      <span className="text-gray-500 font-extrabold text-[8px] md:text-[9px] uppercase tracking-widest px-1.5 select-none">Audio:</span>
+                      <button 
+                        onClick={() => setSubOrDub('sub')}
+                        className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm transition-all duration-300 ${subOrDub === 'sub' ? 'bg-[#1ce783] text-black shadow-[0_0_10px_rgba(28,231,131,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                      >
+                        SUB
+                      </button>
+                      <button 
+                        onClick={() => setSubOrDub('dub')}
+                        className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm transition-all duration-300 ${subOrDub === 'dub' ? 'bg-[#1ce783] text-black shadow-[0_0_10px_rgba(28,231,131,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                      >
+                        DUB
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
               <p className="text-gray-200 text-sm md:text-lg leading-relaxed max-w-5xl">{media.overview}</p>
