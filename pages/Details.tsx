@@ -344,7 +344,7 @@ const Details: React.FC = () => {
           <div className="w-full h-full relative">
             {/* Background Layer (Player or Preview) */}
             {isPlaying ? (
-              <div className="w-full h-full group/player relative animate-in fade-in duration-500">
+              <div key={activeServer} className="w-full h-full group/player relative animate-in fade-in duration-500">
                 <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity duration-300">
                   <div className="flex items-center gap-2">
                     <button 
@@ -393,7 +393,8 @@ const Details: React.FC = () => {
                 </div>
 
                 <iframe 
-                  key={embedUrl}
+                  key={`${activeServer}-${currentSeason}-${currentEpisode}-${id}`}
+                  referrerPolicy="no-referrer"
                   ref={playerIframeRef}
                   src={embedUrl}
                   className="w-full h-full"
