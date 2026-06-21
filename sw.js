@@ -40,24 +40,17 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   
-  // BYPASS LIST: Third-party APIs and dynamic content providers
-  const isBypassed = 
-    url.hostname.includes('api.themoviedb.org') || 
-    url.hostname.includes('generativelanguage.googleapis.com') ||
-    url.hostname.includes('supabase.co') ||
-    url.hostname.includes('vidsrc.cc') ||
-    url.hostname.includes('vidsrc.to') ||
-    url.hostname.includes('vidsrc.me') ||
-    url.hostname.includes('vidsrc.xyz');
+  // Only handle same-origin requests and TMDB images
+  const isSameOrigin = url.origin === self.location.origin;
+  const isTMDBImage = url.hostname.includes('tmdb.org') || url.hostname.includes('image.tmdb.org');
 
-  if (isBypassed) {
+  if (!isSameOrigin && !isTMDBImage) {
+    // Let the browser handle all third-party requests (players, sub-iframes, CDNs, ads, redirect domains, etc.) natively
     return;
   }
 
-  const isImage = url.hostname.includes('tmdb.org') || url.hostname.includes('image.tmdb.org');
-
   // Strategy for images: Cache First, then Network
-  if (isImage) {
+  if (isTMDBImage) {
     event.respondWith(
       caches.open(IMAGE_CACHE_NAME).then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {

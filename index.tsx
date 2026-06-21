@@ -9,16 +9,19 @@ window.onerror = function(message, source, lineno, colno, error) {
   return false;
 };
 
-// PWA Service Worker Registration - Disabled to prevent development caching issues
-/*
+// PWA Service Worker Cleanup - Unregistering service worker to prevent development caching or intercept issues
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('ZenStream: SW Registered', reg.scope))
-      .catch(err => console.log('ZenStream: SW Failed', err));
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister().then((success) => {
+        if (success) {
+          console.log('ZenStream: Cleaned stale service worker registration');
+          window.location.reload();
+        }
+      });
+    }
   });
 }
-*/
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
