@@ -48,6 +48,15 @@ const Details: React.FC = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [sleepTimeRemaining, setSleepTimeRemaining] = useState<number | null>(null);
   const [showTimerMenu, setShowTimerMenu] = useState(false);
+  const [activeServer, setActiveServer] = useState<'vidking' | 'vidnest'>(() => {
+    return (localStorage.getItem('ts_server') as 'vidking' | 'vidnest') || 'vidking';
+  });
+  const [animeSubOrDub, setAnimeSubOrDub] = useState<'sub' | 'dub' | 'hindi'>(() => {
+    return (localStorage.getItem('ts_anime_sub_dub') as 'sub' | 'dub' | 'hindi') || 'sub';
+  });
+  const [animeSource, setAnimeSource] = useState<'animepahe' | 'anime'>(() => {
+    return (localStorage.getItem('ts_anime_source') as 'animepahe' | 'anime') || 'animepahe';
+  });
   
   const previewTimerRef = useRef<number | null>(null);
   const sleepIntervalRef = useRef<number | null>(null);
@@ -57,6 +66,11 @@ const Details: React.FC = () => {
   const episodeListRef = useRef<HTMLDivElement>(null);
 
   const isTv = type?.toLowerCase() === 'tv';
+  
+  const isAnime = useMemo(() => {
+    if (!media) return false;
+    return media.genres?.some(g => g.id === 16) && media.original_language === 'ja';
+  }, [media]);
 
   const lastWatched = useMemo(() => {
     if (!isTv || !history) return null;
@@ -274,11 +288,24 @@ const Details: React.FC = () => {
     const tmdbId = id;
     const params = "color=1db954&autoPlay=true&nextEpisode=true&episodeSelector=true";
     
+    if (activeServer === 'vidnest') {
+      if (isAnime) {
+        const anilistId = media?.external_ids?.tvdb_id || tmdbId;
+        const subOrDub = animeSubOrDub;
+        const ep = isTv ? currentEpisode : 1;
+        return `https://vidnest.fun/${animeSource}/${anilistId}/${ep}/${subOrDub}`;
+      }
+      if (isTv) {
+        return `https://vidnest.fun/tv/${tmdbId}/${currentSeason}/${currentEpisode}`;
+      }
+      return `https://vidnest.fun/movie/${tmdbId}`;
+    }
+
     if (isTv) {
       return `https://www.vidking.net/embed/tv/${tmdbId}/${currentSeason}/${currentEpisode}?${params}`;
     }
     return `https://www.vidking.net/embed/movie/${tmdbId}?${params}`;
-  }, [id, currentSeason, currentEpisode, isTv]);
+  }, [id, currentSeason, currentEpisode, isTv, activeServer, isAnime, media, animeSubOrDub, animeSource]);
 
   const releaseYear = (media?.release_date || media?.first_air_date || '').substring(0, 4);
   const backgroundTrailerUrl = useMemo(() => {
@@ -486,11 +513,92 @@ const Details: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-3 md:gap-4">
                   <span className="text-[#1ce783] font-bold uppercase text-[10px] md:text-xs tracking-widest">IMDb Score ★ {media.vote_average.toFixed(1)}</span>
                   <span className="text-gray-400 font-bold text-xs md:text-base">{releaseYear}</span>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap items-center">
                     {media.genres?.slice(0, 3).map(g => (
                       <span key={g.id} className="text-[#1ce783]/60 text-[9px] md:text-[10px] font-black uppercase tracking-tighter bg-white/5 px-2.5 py-1 rounded-md">{g.name}</span>
                     ))}
                   </div>
+
+                  <div className="flex items-center gap-1 bg-white/5 p-1 rounded-md border border-white/10">
+                    <span className="text-gray-500 font-extrabold text-[8px] md:text-[9px] uppercase tracking-widest px-1.5 select-none">Server:</span>
+                    <button 
+                      onClick={() => {
+                        setActiveServer('vidking');
+                        localStorage.setItem('ts_server', 'vidking');
+                      }}
+                      className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm transition-all duration-300 ${activeServer === 'vidking' ? 'bg-[#1ce783] text-black shadow-[0_0_10px_rgba(28,231,131,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                      VidKing
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setActiveServer('vidnest');
+                        localStorage.setItem('ts_server', 'vidnest');
+                      }}
+                      className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm transition-all duration-300 ${activeServer === 'vidnest' ? 'bg-[#1ce783] text-black shadow-[0_0_10px_rgba(28,231,131,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                      VidNest
+                    </button>
+                  </div>
+
+                  {isAnime && activeServer === 'vidnest' && (
+                    <>
+                      {/* Audio / Voice Selection */}
+                      <div className="flex items-center gap-1 bg-white/5 p-1 rounded-md border border-white/10 animate-in fade-in duration-300">
+                        <span className="text-gray-500 font-extrabold text-[8px] md:text-[9px] uppercase tracking-widest px-1.5 select-none">Voice:</span>
+                        <button 
+                          onClick={() => {
+                            setAnimeSubOrDub('sub');
+                            localStorage.setItem('ts_anime_sub_dub', 'sub');
+                          }}
+                          className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm transition-all duration-300 ${animeSubOrDub === 'sub' ? 'bg-[#1ce783] text-black shadow-[0_0_10px_rgba(28,231,131,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                        >
+                          Sub
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setAnimeSubOrDub('dub');
+                            localStorage.setItem('ts_anime_sub_dub', 'dub');
+                          }}
+                          className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm transition-all duration-300 ${animeSubOrDub === 'dub' ? 'bg-[#1ce783] text-black shadow-[0_0_10px_rgba(28,231,131,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                        >
+                          Dub
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setAnimeSubOrDub('hindi');
+                            localStorage.setItem('ts_anime_sub_dub', 'hindi');
+                          }}
+                          className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm transition-all duration-300 ${animeSubOrDub === 'hindi' ? 'bg-[#1ce783] text-black shadow-[0_0_10px_rgba(28,231,131,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                        >
+                          Hindi
+                        </button>
+                      </div>
+
+                      {/* Anime Provider Source Selection */}
+                      <div className="flex items-center gap-1 bg-white/5 p-1 rounded-md border border-white/10 animate-in fade-in duration-300">
+                        <span className="text-gray-500 font-extrabold text-[8px] md:text-[9px] uppercase tracking-widest px-1.5 select-none font-sans font-black">Source:</span>
+                        <button 
+                          onClick={() => {
+                            setAnimeSource('animepahe');
+                            localStorage.setItem('ts_anime_source', 'animepahe');
+                          }}
+                          className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm transition-all duration-300 ${animeSource === 'animepahe' ? 'bg-[#1ce783] text-black shadow-[0_0_10px_rgba(28,231,131,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                        >
+                          AnimePahe
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setAnimeSource('anime');
+                            localStorage.setItem('ts_anime_source', 'anime');
+                          }}
+                          className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm transition-all duration-300 ${animeSource === 'anime' ? 'bg-[#1ce783] text-black shadow-[0_0_10px_rgba(28,231,131,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                        >
+                          AniList
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               <p className="text-gray-200 text-sm md:text-lg leading-relaxed max-w-5xl">{media.overview}</p>

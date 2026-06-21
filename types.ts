@@ -27,6 +27,7 @@ export interface Movie {
   original_language?: string;
   external_ids?: {
     imdb_id?: string;
+    tvdb_id?: number;
   };
   videos?: {
     results: Array<{
